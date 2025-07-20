@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>ระบบเบิก-จ่ายวัสดุสำนักงาน Deluxe</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5, Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        #loadingSpinner { display:none; position:fixed; top:50%; left:50%; z-index:2000; }
+        .form-text { font-size:0.95em; }
+        .table th, .table td { vertical-align: middle; }
+        .input-group > .form-select { flex: 1 1 auto; min-width: 0; }
+        .modal-lg { max-width: 820px; }
+        .btn-pdf { min-width: 40px; }
+    </style>
+</head>
+<body class="bg-light">
+<div class="container my-4">
+
+    <h2 class="mb-3">ระบบเบิก-จ่ายวัสดุสำนักงาน <span class="badge bg-info">Deluxe</span></h2>
+
+    <div id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+
+    <div id="summaryStats" class="alert alert-info mb-3"></div>
+
+    <!-- Toast (แจ้งเตือน) -->
+    <div class="toast align-items-center text-white bg-success position-fixed top-0 end-0 m-3" id="toast" role="alert">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+
+    <!-- Modal แสดง PDF Preview -->
+    <div class="modal fade" id="pdfPreviewModal" tabindex="-1">
+      <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">ดูเอกสาร PDF</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" style="min-height:80vh;">
+            <iframe id="pdfPreviewFrame" src="" width="100%" height="600" style="border:none;"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: เพิ่มวัสดุใหม่ -->
+    <div class="modal fade" id="addMaterialModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <form class="modal-content" onsubmit="return false;">
+          <div class="modal-header">
+            <h5 class="modal-title">เพิ่มวัสดุใหม่</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">บาร์โค้ด</label>
+                <div class="input-group mb-2">
+                  <input type="text" class="form-control" id="materialBarcode" placeholder="">
+                  <button class="btn btn-outline-secondary" type="button" id="generateBarcodeBtn">
+                    <i class="bi bi-upc"></i> สร้างบาร์โค้ด
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">รหัสวัสดุ</label>
+                <input type="text" class="form-control" id="materialCode" placeholder="" readonly>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">ชื่อวัสดุ</label>
+                <input type="text" class="form-control" id="materialName" placeholder="">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">ประเภท</label>
+                <select class="form-select" id="materialCategory">
+                  <option value="">เลือกประเภท</option>
+                  <option value="กระดาษ">กระดาษ</option>
+                  <option value="เครื่องเขียน">เครื่องเขียน</option>
+                  <option value="เครื่องใช้สำนักงาน">เครื่องใช้สำนักงาน</option>
+                  <option value="จัดเก็บเอกสาร">จัดเก็บเอกสาร</option>
+                  <option value="ยา">ยา</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">หน่วยนับ</label>
+                <select class="form-select" id="materialUnit">
+                  <option value="">เลือกหน่วยนับ</option>
+                  <option value="ชิ้น">ชิ้น</option>
+                  <option value="กล่อง">กล่อง</option>
+                  <option value="แพ็ค">แพ็ค</option>
+                  <option value="เล่ม">เล่ม</option>
+                  <option value="ชุด">ชุด</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">จำนวนเริ่มต้น</label>
+                <input type="number" class="form-control" id="materialInitStock" value="0" min="0">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">ระดับสต็อกขั้นต่ำ</label>
+                <input type="number" class="form-control" id="materialMinStock" value="0" min="0">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">ที่เก็บ</label>
+                <input type="text" class="form-control" id="materialLocation">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">ราคาต่อหน่วย</label>
+                <input type="text" class="form-control" id="materialPrice" placeholder="฿">
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">หมายเหตุ</label>
+                <textarea class="form-control" id="materialNote" rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer justify-content-end">
+            <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary px-4" id="addMaterialBtn">บันทึก</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: รับวัสดุเข้า -->
+    <div class="modal fade" id="receiveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <form class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">รับวัสดุเข้า</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">วัสดุ</label>
+                            <div class="input-group mb-2">
+                                <select class="form-select" id="receiveMaterial" required></select>
+                                <button class="btn btn-outline-secondary" type="button" id="scanBarcodeReceiveBtn">
+                                    <i class="bi bi-upc-scan"></i> สแกน
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">จำนวน</label>
+                            <input type="number" class="form-control" id="receiveQuantity" min="1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">วันที่</label>
+                            <input type="date" class="form-control" id="receiveDate" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">ร้านที่ซื้อ</label>
+                            <input type="text" class="form-control" id="receiveShop">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">แนบเอกสาร (PDF)</label>
+                            <input type="file" class="form-control" id="receiveFile" accept="application/pdf" multiple>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">หมายเหตุ</label>
+                            <textarea class="form-control" id="receiveNote" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-end">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-success px-4" id="saveReceiveBtn">บันทึกการรับเข้า</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: เบิกจ่ายวัสดุ -->
+    <div class="modal fade" id="issueModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <form class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">เบิกจ่ายวัสดุ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">วัสดุ</label>
+                            <div class="input-group mb-2">
+                                <select class="form-select" id="issueMaterial" required></select>
+                                <button class="btn btn-outline-secondary" type="button" id="scanBarcodeIssueBtn">
+                                    <i class="bi bi-upc-scan"></i> สแกน
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">จำนวน</label>
+                            <input type="number" class="form-control" id="issueQuantity" min="1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">วันที่</label>
+                            <input type="date" class="form-control" id="issueDate" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">ผู้เบิก</label>
+                            <input type="text" class="form-control" id="issueReceiver">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">แนบเอกสาร (PDF)</label>
+                            <input type="file" class="form-control" id="issueFile" accept="application/pdf" multiple>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">หมายเหตุ</label>
+                            <textarea class="form-control" id="issueNote" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-end">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn btn-danger px-4" id="saveIssueBtn">บันทึกการเบิกจ่าย</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ปุ่ม action -->
+    <div class="my-3">
+        <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addMaterialModal">
+            <i class="bi bi-plus-circle"></i> เพิ่มวัสดุใหม่
+        </button>
+        <button class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#issueModal">
+            <i class="bi bi-box-arrow-up"></i> เบิกวัสดุ
+        </button>
+        <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#receiveModal">
+            <i class="bi bi-box-arrow-in-down"></i> รับเข้าวัสดุ
+        </button>
+        <button class="btn btn-outline-success me-2" id="exportMaterialsBtn">
+            <i class="bi bi-file-earmark-excel"></i> Export วัสดุ
+        </button>
+        <button class="btn btn-outline-success me-2" id="exportTxBtn">
+            <i class="bi bi-file-earmark-excel"></i> Export ประวัติ
+        </button>
+        <label class="btn btn-outline-primary mb-0">
+            <i class="bi bi-upload"></i> Import วัสดุ Excel
+            <input type="file" id="importMaterialsFile" accept=".xlsx,.xls" hidden>
+        </label>
+    </div>
+
+    <!-- Materials Table -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>รายการวัสดุคงเหลือ</span>
+            <span id="lowStockAlert" class="badge bg-danger d-none"></span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>บาร์โค้ด</th>
+                            <th>รหัสวัสดุ</th>
+                            <th>ชื่อวัสดุ</th>
+                            <th>ประเภท</th>
+                            <th>คงเหลือ</th>
+                            <th>หน่วย</th>
+                            <th>ราคาต่อหน่วย</th>
+                            <th>ที่เก็บ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materialsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="card">
+        <div class="card-header">ประวัติการเบิก/รับเข้า (30 รายการล่าสุด)</div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>วัน-เวลา</th>
+                            <th>บาร์โค้ด</th>
+                            <th>รหัสวัสดุ</th>
+                            <th>ชื่อวัสดุ</th>
+                            <th>ประเภท</th>
+                            <th>จำนวน</th>
+                            <th>หน่วย</th>
+                            <th>ชื่อผู้ดำเนินการ</th>
+                            <th>หมายเหตุ</th>
+                            <th>เอกสาร</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap 5 JS + Supabase + SheetJS (xlsx) + html5-qrcode -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+const SUPABASE_URL = "https://zubrflyhzsmqngfbjkpg.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1YnJmbHloenNtcW5nZmJqa3BnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MjA4NjAsImV4cCI6MjA2ODQ5Njg2MH0.SIDLeNDWphs1LxPLO5Mg37oCUB_8eAvfRIz5lCfle8g";
+const SUPABASE_PUBLIC_DOCS = "https://https://zubrflyhzsmqngfbjkpg.supabase.co.supabase.co/storage/v1/object/public/docs/";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let materials = [];
+let transactions = [];
+let loading = false;
+
+function showToast(msg, type = 'success') {
+    const toast = document.getElementById('toast');
+    const toastBody = document.getElementById('toastBody');
+    if (!toast || !toastBody) { alert(msg); return; }
+    toastBody.textContent = msg;
+    toast.className = 'toast align-items-center text-white bg-' + (type === 'danger' ? 'danger' : 'success');
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+}
+function showLoadingSpinner(show) {
+    const spinner = document.getElementById('loadingSpinner');
+    if (spinner) spinner.style.display = show ? 'block' : 'none';
+}
+
+function updateSummaryStats() {
+    const totalStock = materials.reduce((sum, m) => sum + (m.current_stock||0), 0);
+    const totalMaterials = materials.length;
+    const recentOut = transactions.filter(tx => tx.type === 'out').slice(0,10).reduce((sum, tx) => sum + tx.quantity, 0);
+    const recentIn = transactions.filter(tx => tx.type === 'in').slice(0,10).reduce((sum, tx) => sum + tx.quantity, 0);
+    document.getElementById('summaryStats').innerHTML =
+        `วัสดุทั้งหมด: <b>${totalMaterials}</b> รายการ, คงเหลือรวม: <b>${totalStock}</b> หน่วย<br>
+         เบิก 10 รายการล่าสุด: <b>${recentOut}</b> | รับเข้า 10 รายการล่าสุด: <b>${recentIn}</b>`;
+}
+
+async function fetchMaterials() {
+    showLoadingSpinner(true);
+    try {
+        const { data, error } = await supabase
+            .from('materials')
+            .select('*')
+            .order('name', { ascending: true });
+        if (error) throw error;
+        materials = data || [];
+        renderMaterialsTable();
+        populateMaterialSelects();
+        const lowStock = materials.filter(m => m.current_stock <= m.min_stock);
+        const badge = document.getElementById('lowStockAlert');
+        if (lowStock.length) {
+            badge.textContent = `วัสดุ ${lowStock.length} รายการคงเหลือต่ำ!`;
+            badge.classList.remove('d-none');
+            showToast(`⚠️ วัสดุคงเหลือต่ำ: ${lowStock.map(m=>m.name).join(', ')}`, 'danger');
+        } else {
+            badge.textContent = '';
+            badge.classList.add('d-none');
+        }
+        updateSummaryStats();
+    } catch (e) {
+        showToast('ดึงวัสดุผิดพลาด: ' + e.message, 'danger');
+    }
+    showLoadingSpinner(false);
+}
+
+async function addMaterial(material) {
+    showLoadingSpinner(true);
+    try {
+        const { data, error } = await supabase.from('materials').insert([material]).select();
+        if (error) throw error;
+        if (data && data[0]) materials.push(data[0]);
+        renderMaterialsTable();
+        populateMaterialSelects();
+        showToast('เพิ่มวัสดุสำเร็จ');
+        updateSummaryStats();
+    } catch (e) {
+        showToast('เพิ่มวัสดุผิดพลาด: ' + e.message, 'danger');
+    }
+    showLoadingSpinner(false);
+}
+
+async function updateMaterial(id, updates) {
+    showLoadingSpinner(true);
+    try {
+        const { data, error } = await supabase.from('materials').update(updates).eq('id', id).select();
+        if (error) throw error;
+        const idx = materials.findIndex(m => m.id == id);
+        if (idx !== -1 && data && data[0]) materials[idx] = data[0];
+        renderMaterialsTable();
+        populateMaterialSelects();
+        showToast('อัปเดตวัสดุสำเร็จ');
+        updateSummaryStats();
+    } catch (e) {
+        showToast('อัปเดตวัสดุผิดพลาด: ' + e.message, 'danger');
+    }
+    showLoadingSpinner(false);
+}
+
+async function fetchTransactions(limit = 30) {
+    showLoadingSpinner(true);
+    try {
+        const { data, error } = await supabase
+            .from('transactions')
+            .select('*, materials(name, unit, material_code, barcode, category, price, location)')
+            .order('transaction_date', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        transactions = data || [];
+        renderTransactionsTable();
+        updateSummaryStats();
+    } catch (e) {
+        showToast('ดึงประวัติผิดพลาด: ' + e.message, 'danger');
+    }
+    showLoadingSpinner(false);
+}
+
+async function addTransaction(transaction) {
+    loading = true;
+    document.getElementById('saveIssueBtn').disabled = true;
+    showLoadingSpinner(true);
+    try {
+        const { data: txs, error: txErr } = await supabase
+            .from('transactions')
+            .insert([transaction])
+            .select();
+        if (txErr) throw txErr;
+
+        const material = materials.find(m => m.id == transaction.material_id);
+        if (!material) throw new Error('ไม่พบวัสดุ');
+        let newStock = material.current_stock;
+        if (transaction.type === 'in') {
+            newStock += transaction.quantity;
+        } else if (transaction.type === 'out') {
+            if (newStock < transaction.quantity) {
+                await supabase.from('transactions').delete().eq('id', txs[0].id);
+                showToast('จำนวนที่เบิกเกินสต็อกที่มี!', 'danger');
+                throw new Error('จำนวนเกิน');
+            }
+            newStock -= transaction.quantity;
+        }
+        await updateMaterial(material.id, { current_stock: newStock });
+        if (txs && txs[0]) transactions.unshift(txs[0]);
+        renderTransactionsTable();
+        showToast('บันทึกสำเร็จ');
+        updateSummaryStats();
+    } catch (e) {
+        showToast('ผิดพลาด: ' + e.message, 'danger');
+    }
+    document.getElementById('saveIssueBtn').disabled = false;
+    showLoadingSpinner(false);
+    loading = false;
+}
+
+function populateMaterialSelects() {
+    const selectReceive = document.getElementById('receiveMaterial');
+    const selectIssue = document.getElementById('issueMaterial');
+    if (selectReceive) selectReceive.innerHTML = '<option value="">เลือกวัสดุ</option>';
+    if (selectIssue) selectIssue.innerHTML = '<option value="">เลือกวัสดุ</option>';
+    materials.forEach(material => {
+        if (selectReceive) {
+            const option = document.createElement('option');
+            option.value = material.id;
+            option.textContent = `${material.name} (${material.material_code}) - คงเหลือ: ${material.current_stock} ${material.unit}`;
+            selectReceive.appendChild(option);
+        }
+        if (selectIssue) {
+            const option = document.createElement('option');
+            option.value = material.id;
+            option.textContent = `${material.name} (${material.material_code}) - คงเหลือ: ${material.current_stock} ${material.unit}`;
+            selectIssue.appendChild(option);
+        }
+    });
+}
+
+function renderMaterialsTable() {
+    const tbody = document.getElementById('materialsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    materials.forEach(material => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${material.barcode || ''}</td>
+            <td>${material.material_code}</td>
+            <td>${material.name}</td>
+            <td>${material.category}</td>
+            <td>${material.current_stock || 0}</td>
+            <td>${material.unit || ''}</td>
+            <td>${material.price || ''}</td>
+            <td>${material.location || ''}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// >>>>> ฟังก์ชัน renderTransactionsTable รองรับปุ่มดู/โหลด PDF หลายไฟล์ <<<<<
+function renderTransactionsTable() {
+    const tbody = document.getElementById('transactionsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    transactions.forEach((tx, idx) => {
+        const m = tx.materials || {};
+        let fileCell = '-';
+        let files = [];
+        if (tx.file) {
+            try {
+                files = JSON.parse(tx.file);
+                if (!Array.isArray(files)) files = [tx.file];
+            } catch {
+                files = [tx.file];
+            }
+        }
+        if (files.length) {
+            fileCell = files.map((f, i) => {
+                const fileUrl = `${SUPABASE_PUBLIC_DOCS}${f.replace(/^pdf\//,'')}`;
+                return `
+                  <button class="btn btn-outline-secondary btn-sm btn-pdf me-1 mb-1"
+                      onclick="previewPDF('${fileUrl}')" title="ดู PDF">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  <a href="${fileUrl}" target="_blank" class="btn btn-outline-primary btn-sm btn-pdf mb-1" title="ดาวน์โหลด">
+                    <i class="bi bi-download"></i>
+                  </a>
+                `;
+            }).join('<br>');
+        }
+        tbody.innerHTML += `
+            <tr>
+                <td>${tx.transaction_date ? new Date(tx.transaction_date).toLocaleString('th-TH') : '-'}</td>
+                <td>${m.barcode || '-'}</td>
+                <td>${m.material_code || '-'}</td>
+                <td>${m.name || '-'}</td>
+                <td>${m.category || '-'}</td>
+                <td>${tx.quantity}</td>
+                <td>${m.unit || '-'}</td>
+                <td>${tx.receiver || '-'}</td>
+                <td>${tx.note || '-'}</td>
+                <td>${fileCell}</td>
+            </tr>
+        `;
+    });
+}
+
+// >>>>> ฟังก์ชัน preview PDF <<<<<
+function previewPDF(url) {
+    const frame = document.getElementById('pdfPreviewFrame');
+    frame.src = url;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('pdfPreviewModal')).show();
+}
+document.getElementById('pdfPreviewModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('pdfPreviewFrame').src = '';
+});
+
+// == Auto-generate material code by category ==
+function autoGenerateMaterialCode(category, materials=[]) {
+    const categoryPrefix = {
+        "กระดาษ": "PAP",
+        "เครื่องเขียน": "PEN",
+        "เครื่องใช้สำนักงาน": "STP",
+        "จัดเก็บเอกสาร": "FLF",
+        "ยา": "MED"
+    };
+    const prefix = categoryPrefix[category] || "MAT";
+    let maxNumber = 0;
+    materials.forEach(m => {
+        if (m.material_code && m.material_code.startsWith(prefix)) {
+            const num = parseInt(m.material_code.replace(prefix, ''));
+            if (!isNaN(num) && num > maxNumber) maxNumber = num;
+        }
+    });
+    const nextNumber = (maxNumber + 1).toString().padStart(3, '0');
+    return prefix + nextNumber;
+}
+function generateBarcode() {
+    let code = '';
+    for (let i = 0; i < 12; i++) {
+        code += Math.floor(Math.random() * 10);
+    }
+    return code;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetchMaterials();
+    fetchTransactions();
+
+    document.getElementById('materialCategory').addEventListener('change', function() {
+        const code = autoGenerateMaterialCode(this.value, materials);
+        document.getElementById('materialCode').value = code;
+    });
+    document.getElementById('generateBarcodeBtn').addEventListener('click', function() {
+        document.getElementById('materialBarcode').value = generateBarcode();
+    });
+    document.getElementById('addMaterialBtn').addEventListener('click', async function() {
+        const material = {
+            barcode: document.getElementById('materialBarcode').value.trim(),
+            material_code: document.getElementById('materialCode').value.trim(),
+            name: document.getElementById('materialName').value.trim(),
+            category: document.getElementById('materialCategory').value,
+            unit: document.getElementById('materialUnit').value,
+            initial_stock: parseInt(document.getElementById('materialInitStock').value) || 0,
+            min_stock: parseInt(document.getElementById('materialMinStock').value) || 0,
+            location: document.getElementById('materialLocation').value.trim(),
+            price: document.getElementById('materialPrice').value.trim(),
+            note: document.getElementById('materialNote').value.trim(),
+            current_stock: parseInt(document.getElementById('materialInitStock').value) || 0
+        };
+        if (!material.name || !material.category || !material.material_code) {
+            showToast('กรุณากรอกข้อมูลหลักให้ครบ', 'danger');
+            return;
+        }
+        const { data, error } = await supabase.from('materials').insert([material]).select();
+        if (error) return showToast('บันทึกผิดพลาด: ' + error.message, 'danger');
+        showToast('เพิ่มวัสดุใหม่สำเร็จ');
+        document.querySelector('#addMaterialModal form').reset();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('addMaterialModal')).hide();
+        fetchMaterials();
+    });
+
+    // --- Modal รับวัสดุเข้า (multi-file) ---
+    document.getElementById('scanBarcodeReceiveBtn').addEventListener('click', function() {
+        const qrDiv = document.createElement('div');
+        qrDiv.id = 'qr-reader-receive';
+        qrDiv.style.width = '250px';
+        qrDiv.style.margin = '10px auto';
+        document.querySelector('#receiveModal .modal-body').appendChild(qrDiv);
+        const qr = new Html5Qrcode(qrDiv.id);
+        qr.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            barcode => {
+                qr.stop();
+                qrDiv.remove();
+                const found = materials.find(m => m.barcode == barcode);
+                if (found) {
+                    document.getElementById('receiveMaterial').value = found.id;
+                    showToast('เลือกวัสดุจาก barcode สำเร็จ');
+                } else {
+                    showToast('ไม่พบรหัสวัสดุนี้', 'danger');
+                }
+            }
+        );
+    });
+    document.getElementById('receiveModal').addEventListener('shown.bs.modal', function() {
+        document.getElementById('receiveDate').value = new Date().toISOString().slice(0,10);
+    });
+    document.getElementById('saveReceiveBtn').addEventListener('click', async function() {
+        const materialId = document.getElementById('receiveMaterial').value;
+        const quantity = parseInt(document.getElementById('receiveQuantity').value || '0');
+        const shop = document.getElementById('receiveShop').value || '';
+        const note = document.getElementById('receiveNote').value || '';
+        const fileInput = document.getElementById('receiveFile');
+        let fileUrls = [];
+        if (fileInput.files.length) {
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const file = fileInput.files[i];
+                const path = 'pdf/' + Date.now() + '-' + file.name;
+                const { data, error } = await supabase.storage.from('docs').upload(path, file, { upsert:true });
+                if (!error) fileUrls.push(path);
+            }
+        }
+        const transaction = {
+            material_id: materialId,
+            quantity,
+            receiver: shop,
+            type: 'in',
+            transaction_date: document.getElementById('receiveDate').value,
+            note: note,
+            file: fileUrls.length > 0 ? JSON.stringify(fileUrls) : ''
+        };
+        if (!materialId || !quantity) return showToast('กรุณาระบุข้อมูลให้ครบ', 'danger');
+        await addTransaction(transaction);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('receiveModal')).hide();
+        fetchTransactions();
+        fetchMaterials();
+    });
+
+    // --- Modal เบิกจ่ายวัสดุ (multi-file) ---
+    document.getElementById('scanBarcodeIssueBtn').addEventListener('click', function() {
+        const qrDiv = document.createElement('div');
+        qrDiv.id = 'qr-reader-issue';
+        qrDiv.style.width = '250px';
+        qrDiv.style.margin = '10px auto';
+        document.querySelector('#issueModal .modal-body').appendChild(qrDiv);
+        const qr = new Html5Qrcode(qrDiv.id);
+        qr.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: 250 },
+            barcode => {
+                qr.stop();
+                qrDiv.remove();
+                const found = materials.find(m => m.barcode == barcode);
+                if (found) {
+                    document.getElementById('issueMaterial').value = found.id;
+                    showToast('เลือกวัสดุจาก barcode สำเร็จ');
+                } else {
+                    showToast('ไม่พบรหัสวัสดุนี้', 'danger');
+                }
+            }
+        );
+    });
+    document.getElementById('issueModal').addEventListener('shown.bs.modal', function() {
+        document.getElementById('issueDate').value = new Date().toISOString().slice(0,10);
+    });
+    document.getElementById('saveIssueBtn').addEventListener('click', async function() {
+        const materialId = document.getElementById('issueMaterial').value;
+        const quantity = parseInt(document.getElementById('issueQuantity').value || '0');
+        const receiver = document.getElementById('issueReceiver').value || '';
+        const note = document.getElementById('issueNote').value || '';
+        const fileInput = document.getElementById('issueFile');
+        let fileUrls = [];
+        if (fileInput.files.length) {
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const file = fileInput.files[i];
+                const path = 'pdf/' + Date.now() + '-' + file.name;
+                const { data, error } = await supabase.storage.from('docs').upload(path, file, { upsert:true });
+                if (!error) fileUrls.push(path);
+            }
+        }
+        const transaction = {
+            material_id: materialId,
+            quantity,
+            receiver,
+            type: 'out',
+            transaction_date: document.getElementById('issueDate').value,
+            note: note,
+            file: fileUrls.length > 0 ? JSON.stringify(fileUrls) : ''
+        };
+        if (!materialId || !quantity) return showToast('กรุณาระบุข้อมูลให้ครบ', 'danger');
+        await addTransaction(transaction);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('issueModal')).hide();
+        fetchTransactions();
+        fetchMaterials();
+    });
+
+    // --- Export/Import Excel ---
+    document.getElementById('exportMaterialsBtn').addEventListener('click', function() {
+        const ws = XLSX.utils.json_to_sheet(materials);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "วัสดุ");
+        XLSX.writeFile(wb, "materials.xlsx");
+    });
+    document.getElementById('exportTxBtn').addEventListener('click', function() {
+        const ws = XLSX.utils.json_to_sheet(transactions.map(tx => ({
+            ...tx,
+            material_name: (tx.materials || {}).name || ''
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "ประวัติ");
+        XLSX.writeFile(wb, "transactions.xlsx");
+    });
+    document.getElementById('importMaterialsFile').addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            const workbook = XLSX.read(evt.target.result, { type: 'binary' });
+            const wsName = workbook.SheetNames[0];
+            const data = XLSX.utils.sheet_to_json(workbook.Sheets[wsName]);
+            if (confirm(`นำเข้าวัสดุ ${data.length} รายการ?`)) {
+                for (let material of data) {
+                    try {
+                        await addMaterial(material);
+                    } catch {}
+                }
+                fetchMaterials();
+            }
+        };
+        reader.readAsBinaryString(file);
+    });
+});
+</script>
+</body>
+</html>
