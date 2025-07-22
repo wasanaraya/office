@@ -38,6 +38,7 @@
 </head>
 <body>
   <div class="layout">
+    <!-- Sidebar -->
     <nav class="sidebar">
       <div class="sidebar-logo">วัสดุสำนักงาน Deluxe</div>
       <ul class="sidebar-menu">
@@ -49,163 +50,374 @@
         <li><a href="#" onclick="showPage('budget')"><i class="bi bi-currency-dollar"></i> ขออนุมัติใช้งบ</a></li>
       </ul>
     </nav>
+
+    <!-- Main -->
     <div class="main">
       <div class="topbar">
         <span><i class="bi bi-app-indicator"></i> ระบบจัดการวัสดุสำนักงาน</span>
       </div>
+
       <div class="content-area">
         <!-- Dashboard -->
-        <div id="page-dashboard"><div class="page-title">Dashboard</div><div class="section-card" id="dashboardContent">กำลังโหลด...</div></div>
+        <div id="page-dashboard">
+          <div class="page-title">Dashboard</div>
+          <div class="section-card" id="dashboardContent">กำลังโหลด...</div>
+        </div>
+
         <!-- Materials -->
-        <div id="page-materials" style="display:none"><div class="page-title">รายการวัสดุสำนักงาน</div><div class="section-card"><button class="btn-main" onclick="openAddMaterialModal()"><i class="bi bi-plus-circle"></i> เพิ่มวัสดุ</button><input class="search-input" placeholder="ค้นหา" id="materialSearch" oninput="renderMaterialsTable()"><table id="materialsTable"></table><div id="materialsPagination"></div></div></div>
-        <!-- Transactions -->
-        <div id="page-transactions" style="display:none"><div class="page-title">ประวัติรับ-จ่ายวัสดุ</div><div class="section-card"><button class="btn-main" style="background:#4caf50" onclick="openAddTransactionModal('in')"><i class="bi bi-arrow-down-circle"></i> รับเข้า</button><button class="btn-main" style="background:#ff9800" onclick="openAddTransactionModal('out')"><i class="bi bi-arrow-up-circle"></i> จ่ายออก</button><input class="search-input" placeholder="ค้นหา" id="transactionSearch" oninput="renderTransactionsTable()"><table id="transactionsTable"></table><div id="transactionsPagination"></div></div></div>
-        <!-- Reports -->
-        <div id="page-report" style="display:none"><div class="page-title">รายงาน</div><div class="tablist"><button class="tab-btn active" onclick="showReportTab('stock')">สต็อก</button><button class="tab-btn" onclick="showReportTab('lowstock')">ใกล้หมด</button><button class="tab-btn" onclick="showReportTab('expiry')">ยาหมดอายุ</button></div><div class="section-card" id="reportContent"></div></div></div>
-        <!-- Settings -->
-        <div id="page-settings" style="display:none"><div class="page-title">ตั้งค่าระบบ</div><div class="section-card"><h4>การตั้งค่าทั่วไป</h4><div class="form-group"><label>จำนวนรายการต่อหน้า</label><select class="form-control" id="settingsItemsPerPage"><option>10</option><option>25</option><option>50</option></select></div><div class="form-group"><label>รูปแบบวันที่</label><select class="form-control" id="settingsDateFormat"><option value="th-TH">ไทย</option><option value="en-US">สากล</option></select></div><div style="text-align:right"><button class="btn-main" onclick="saveSettings()">บันทึก</button></div></div></div>
-        <!-- Budget Request -->
-        <div id="page-budget" style="display:none"><div class="page-title">ขออนุมัติใช้งบประมาณ</div><div class="section-card"><form onsubmit="sendBudgetRequest(event)">
-          <label>เลขที่คำขอ</label><input type="text" id="budgetRequestNo" readonly>
-          <label>วันที่ขออนุมัติ</label><input type="date" id="budgetRequestDate" required>
-          <label>ผู้ขอใช้งบประมาณ</label><input type="text" id="budgetRequester" required>
-          <label>รหัสบัญชี</label><select id="budgetAccountCode" onchange="handleBudgetCodeChange()">
-            <option value="">-- เลือก --</option>
-            <option value="52021100">52021100 - ค่าใช้จ่ายกิจกรรมส่งเสริมค่านิยมร่วมขององค์กร</option>
-            <option value="53040100">53040100 - ค่าวัสดุทั่วไป</option>
-            <option value="53103600">ค่าจัดประชุม/ชี้แจง</option>
-            <option value="53109900">ค่าใช้จ่ายเบ็ดเตล็ด</option>
-          </select>
-          <label>วงเงินที่ขอใช้ (บาท)</label><input type="number" id="budgetAmount" min="0" step="0.01" required>
-          <label>หมายเหตุ</label><textarea id="budgetNote" rows="3"></textarea>
-          <div id="budgetMaterialSection" class="hidden">
-            <label>รายการวัสดุทั่วไป</label>
-            <table><thead><tr><th>รายการ</th><th>จำนวน</th><th>หน่วย</th><th><i class="bi bi-plus-circle add-row-btn" onclick="addBudgetRow()" title="เพิ่มแถว"></i></th></tr></thead><tbody id="budgetMaterialBody"></tbody></table>
+        <div id="page-materials" style="display:none">
+          <div class="page-title">รายการวัสดุสำนักงาน</div>
+          <div class="section-card">
+            <button class="btn-main" onclick="openAddMaterialModal()"><i class="bi bi-plus-circle"></i> เพิ่มวัสดุ</button>
+            <input class="search-input" placeholder="ค้นหา" id="materialSearch" oninput="renderMaterialsTable()">
+            <table id="materialsTable"></table>
+            <div id="materialsPagination"></div>
           </div>
-          <div class="btn-group"><button type="button" class="btn-outline" onclick="resetBudgetForm()">ล้าง</button><button type="submit" class="btn-main">ส่งคำขอ</button></div>
-        </form></div></div>
+        </div>
+
+        <!-- Transactions -->
+        <div id="page-transactions" style="display:none">
+          <div class="page-title">ประวัติรับ-จ่ายวัสดุ</div>
+          <div class="section-card">
+            <button class="btn-main" style="background:#4caf50" onclick="openAddTransactionModal('in')"><i class="bi bi-arrow-down-circle"></i> รับเข้า</button>
+            <button class="btn-main" style="background:#ff9800" onclick="openAddTransactionModal('out')"><i class="bi bi-arrow-up-circle"></i> จ่ายออก</button>
+            <input class="search-input" placeholder="ค้นหา" id="transactionSearch" oninput="renderTransactionsTable()">
+            <table id="transactionsTable"></table>
+            <div id="transactionsPagination"></div>
+          </div>
+        </div>
+
+        <!-- Reports -->
+        <div id="page-report" style="display:none">
+          <div class="page-title">รายงาน</div>
+          <div class="tablist">
+            <button class="tab-btn active" onclick="showReportTab('stock')">สต็อก</button>
+            <button class="tab-btn" onclick="showReportTab('lowstock')">ใกล้หมด</button>
+            <button class="tab-btn" onclick="showReportTab('expiry')">ยาหมดอายุ</button>
+          </div>
+          <div class="section-card" id="reportContent"></div>
+        </div>
+
+        <!-- Settings -->
+        <div id="page-settings" style="display:none">
+          <div class="page-title">ตั้งค่าระบบ</div>
+          <div class="section-card">
+            <h4>การตั้งค่าทั่วไป</h4>
+            <div class="form-group">
+              <label>จำนวนรายการต่อหน้า</label>
+              <select class="form-control" id="settingsItemsPerPage">
+                <option>10</option><option>25</option><option>50</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>รูปแบบวันที่</label>
+              <select class="form-control" id="settingsDateFormat">
+                <option value="th-TH">ไทย</option>
+                <option value="en-US">สากล</option>
+              </select>
+            </div>
+            <div style="text-align:right">
+              <button class="btn-main" onclick="saveSettings()">บันทึก</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Budget Request -->
+        <div id="page-budget" style="display:none">
+          <div class="page-title">ขออนุมัติใช้งบประมาณ</div>
+          <div class="section-card">
+            <form onsubmit="sendBudgetRequest(event)">
+              <label>เลขที่คำขอ</label>
+              <input type="text" id="budgetRequestNo" readonly>
+
+              <label>วันที่ขออนุมัติ</label>
+              <input type="date" id="budgetRequestDate" required>
+
+              <label>ผู้ขอใช้งบประมาณ</label>
+              <input type="text" id="budgetRequester" required>
+
+              <label>รหัสบัญชี</label>
+              <select id="budgetAccountCode" onchange="handleBudgetCodeChange()" required>
+                <option value="">-- เลือก --</option>
+                <!-- จะถูกเติมโดย JS -->
+              </select>
+
+              <label>วงเงินที่ขอใช้ (บาท)</label>
+              <input type="number" id="budgetAmount" min="0" step="0.01" required>
+
+              <label>หมายเหตุ</label>
+              <textarea id="budgetNote" rows="3"></textarea>
+
+              <!-- รายการวัสดุ แสดงเมื่อเลือก 53040100 -->
+              <div id="budgetMaterialSection" class="hidden">
+                <label>รายการวัสดุทั่วไป</label>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>รายการ</th><th>จำนวน</th><th>หน่วย</th>
+                      <th><i class="bi bi-plus-circle add-row-btn" onclick="addBudgetRow()" title="เพิ่มแถว"></i></th>
+                    </tr>
+                  </thead>
+                  <tbody id="budgetMaterialBody"></tbody>
+                </table>
+              </div>
+
+              <div class="btn-group" style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end">
+                <button type="button" class="btn-outline" onclick="resetBudgetForm()">ล้าง</button>
+                <button type="submit" class="btn-main">ส่งคำขอ</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    /* ========================= ตั้งค่า Supabase ========================= */
-    const supabase = supabase.createClient(
+    /* ========= Supabase Client ========= */
+  const supabase = supabase.createClient(
       'https://zubrflyhzsmqngfbjkpg.supabase.co',   // ← แก้
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1YnJmbHloenNtcW5nZmJqa3BnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MjA4NjAsImV4cCI6MjA2ODQ5Njg2MH0.SIDLeNDWphs1LxPLO5Mg37oCUB_8eAvfRIz5lCfle8g'                       // ← แก้
     );
 
-    /* ========================= ตัวแปร ========================= */
-    let currentPage = 1, currentTransactionPage = 1, itemsPerPage = 10, dateFormat = 'th-TH';
-    const accountMap = {
-      '52021100':'ค่าใช้จ่ายกิจกรรมส่งเสริมค่านิยมร่วมขององค์กร',
-      '53040100':'ค่าวัสดุทั่วไป',
-      '53103600':'ค่าจัดประชุม/ชี้แจง',
-      '53109900':'ค่าใช้จ่ายเบ็ดเตล็ด'
-    };
+
+    /* ========= Global Variables ========= */
+    let currentPage = 1;
+    let currentTransactionPage = 1;
+    let itemsPerPage = 10;
+    let dateFormat = 'th-TH';
+    const accountMap = {}; // จะถูกเติมจาก account_codes
+
+    /* ========= Helper ========= */
     const $ = id => document.getElementById(id);
 
-    /* ========================= Navigation ========================= */
+    /* ========= Navigation ========= */
     function showPage(page){
       document.querySelectorAll('.sidebar-menu a').forEach(a=>a.classList.remove('active'));
       document.querySelector(`.sidebar-menu a[onclick="showPage('${page}')"]`).classList.add('active');
       document.querySelectorAll('[id^="page-"]').forEach(p=>p.style.display='none');
       $(`page-${page}`).style.display='block';
-      if(page==='dashboard')renderDashboard();
-      if(page==='materials'){currentPage=1;renderMaterialsTable();}
-      if(page==='transactions'){currentTransactionPage=1;renderTransactionsTable();}
-      if(page==='report')showReportTab('stock');
-      if(page==='settings')loadSettings();
-      if(page==='budget')loadBudgetForm();
+      if(page==='dashboard')     renderDashboard();
+      if(page==='materials')    {currentPage=1; renderMaterialsTable();}
+      if(page==='transactions') {currentTransactionPage=1; renderTransactionsTable();}
+      if(page==='report')        showReportTab('stock');
+      if(page==='settings')      loadSettings();
+      if(page==='budget')        loadBudgetForm();
     }
 
-    /* ========================= CRUD Supabase ========================= */
+    /* ========= CRUD วัสดุ ========= */
     async function renderMaterialsTable(){
-      const q=$('materialSearch')?.value||'';const {data}=await supabase.from('materials').select('*').ilike('name',`%${q}%`).order('name');if(!data)return;
-      const p=Math.ceil(data.length/itemsPerPage),start=(currentPage-1)*itemsPerPage;
-      $('materialsTable').innerHTML=`<thead><tr><th>รหัส</th><th>ชื่อ</th><th>ประเภท</th><th>คงเหลือ</th><th>จัดการ</th></tr></thead><tbody>${data.slice(start,start+itemsPerPage).map(m=>`<tr><td>${m.material_code}</td><td>${m.name}</td><td>${m.category}</td><td>${m.current_stock}</td><td><button class="btn-outline" onclick="deleteMaterial('${m.id}')"><i class="bi bi-trash"></i></button></td></tr>`).join('')}</tbody>`;renderPagination('materialsPagination',currentPage,p,pg=>{currentPage=pg;renderMaterialsTable();});
+      const q=$('materialSearch')?.value||'';
+      const {data}=await supabase.from('materials').select('*').ilike('name',`%${q}%`).order('name');
+      if(!data) return;
+      const p=Math.ceil(data.length/itemsPerPage), start=(currentPage-1)*itemsPerPage;
+      $('materialsTable').innerHTML=
+        `<thead><tr><th>รหัส</th><th>ชื่อ</th><th>ประเภท</th><th>คงเหลือ</th><th>จัดการ</th></tr></thead>
+         <tbody>${data.slice(start,start+itemsPerPage).map(m=>`
+           <tr><td>${m.material_code}</td><td>${m.name}</td><td>${m.category}</td><td>${m.current_stock}</td>
+               <td><button class="btn-outline" onclick="deleteMaterial('${m.id}')"><i class="bi bi-trash"></i></button></td>
+           </tr>`).join('')}
+         </tbody>`;
+      renderPagination('materialsPagination', currentPage, p, pg=>{currentPage=pg; renderMaterialsTable();});
     }
     async function openAddMaterialModal(){
-      const name=prompt('ชื่อวัสดุ');if(!name)return;
+      const name=prompt('ชื่อวัสดุ'); if(!name) return;
       await supabase.from('materials').insert([{name,current_stock:0,min_stock:0,price:0}]);
       renderMaterialsTable();
     }
     async function deleteMaterial(id){
-      if(!confirm('ลบวัสดุนี้หรือไม่?'))return;
+      if(!confirm('ลบวัสดุนี้หรือไม่?')) return;
       await supabase.from('materials').delete().eq('id',id);
       renderMaterialsTable();
     }
+
+    /* ========= CRUD รับ-จ่าย ========= */
     async function renderTransactionsTable(){
       const {data}=await supabase.from('transactions').select('*,materials(name)').order('transaction_date',{ascending:false});
-      const p=Math.ceil(data.length/itemsPerPage),start=(currentTransactionPage-1)*itemsPerPage;
-      $('transactionsTable').innerHTML=`<thead><tr><th>วันที่</th><th>ประเภท</th><th>วัสดุ</th><th>จำนวน</th></tr></thead><tbody>${data.slice(start,start+itemsPerPage).map(t=>`<tr><td>${new Date(t.transaction_date).toLocaleDateString('th-TH')}</td><td>${t.type==='in'?'รับ':'จ่าย'}</td><td>${t.materials.name}</td><td>${t.quantity}</td></tr>`).join('')}</tbody>`;renderPagination('transactionsPagination',currentTransactionPage,p,pg=>{currentTransactionPage=pg;renderTransactionsTable();});
+      if(!data) return;
+      const p=Math.ceil(data.length/itemsPerPage), start=(currentTransactionPage-1)*itemsPerPage;
+      $('transactionsTable').innerHTML=
+        `<thead><tr><th>วันที่</th><th>ประเภท</th><th>วัสดุ</th><th>จำนวน</th></tr></thead>
+         <tbody>${data.slice(start,start+itemsPerPage).map(t=>`
+           <tr><td>${new Date(t.transaction_date).toLocaleDateString('th-TH')}</td>
+               <td>${t.type==='in'?'รับ':'จ่าย'}</td><td>${t.materials.name}</td><td>${t.quantity}</td>
+           </tr>`).join('')}
+         </tbody>`;
+      renderPagination('transactionsPagination', currentTransactionPage, p, pg=>{currentTransactionPage=pg; renderTransactionsTable();});
     }
     async function openAddTransactionModal(type){
-      const {data:mat}=await supabase.from('materials').select('id,name,current_stock');
-      const materialId=prompt('เลือกวัสดุ ID',mat.map(m=>m.id).join(', '));if(!materialId)return;
-      const qty=parseInt(prompt('จำนวน'));if(!qty)return;
+      const {data:mat}=await supabase.from('materials').select('id,name');
+      const materialId=prompt('เลือกวัสดุ ID\n'+mat.map(m=>`${m.id}: ${m.name}`).join('\n'));
+      if(!materialId) return;
+      const qty=parseInt(prompt('จำนวน')); if(!qty) return;
       await supabase.from('transactions').insert([{material_id:materialId,type,quantity:qty,transaction_date:new Date()}]);
       renderTransactionsTable();
     }
+
+    /* ========= Dashboard ========= */
     async function renderDashboard(){
-      const {data:mat}=await supabase.from('materials').select();const {data:tx}=await supabase.from('transactions').select();
-      const total=mat.length,stock=mat.reduce((a,m)=>a+m.current_stock,0),low=mat.filter(m=>m.current_stock<=m.min_stock).length,trans=tx.length;
-      $('dashboardContent').innerHTML=`<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px"><div class="dashboard-card blue"><div class="icon blue"><i class="bi bi-box-seam"></i> วัสดุทั้งหมด</div><div class="value">${total}</div></div><div class="dashboard-card green"><div class="icon green"><i class="bi bi-stack"></i> คงเหลือรวม</div><div class="value">${stock}</div></div><div class="dashboard-card red"><div class="icon red"><i class="bi bi-exclamation-triangle"></i> ต่ำกว่าขั้นต่ำ</div><div class="value">${low}</div></div><div class="dashboard-card purple"><div class="icon purple"><i class="bi bi-arrow-left-right"></i> รับ-จ่าย</div><div class="value">${trans}</div></div></div>`;
+      const {data:mat}=await supabase.from('materials').select();
+      const {data:tx}=await supabase.from('transactions').select();
+      const total=mat?.length||0;
+      const stock=mat?.reduce((a,m)=>a+m.current_stock,0)||0;
+      const low=mat?.filter(m=>m.current_stock<=m.min_stock).length||0;
+      const trans=tx?.length||0;
+      $('dashboardContent').innerHTML=
+        `<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px">
+           <div class="dashboard-card blue"><div class="icon blue"><i class="bi bi-box-seam"></i> วัสดุทั้งหมด</div><div class="value">${total}</div></div>
+           <div class="dashboard-card green"><div class="icon green"><i class="bi bi-stack"></i> คงเหลือรวม</div><div class="value">${stock}</div></div>
+           <div class="dashboard-card red"><div class="icon red"><i class="bi bi-exclamation-triangle"></i> ต่ำกว่าขั้นต่ำ</div><div class="value">${low}</div></div>
+           <div class="dashboard-card purple"><div class="icon purple"><i class="bi bi-arrow-left-right"></i> รับ-จ่าย</div><div class="value">${trans}</div></div>
+         </div>`;
     }
+
+    /* ========= Reports ========= */
     async function showReportTab(tab){
       const {data}=await supabase.from('materials').select();
+      if(!data) return;
       let html='';
-      if(tab==='stock'){const total=data.reduce((a,m)=>a+m.current_stock*m.price,0);html=`<table>${data.map(m=>`<tr><td>${m.name}</td><td>${m.current_stock}</td><td>${m.price}</td><td>${m.current_stock*m.price}</td></tr>`).join('')}</table><div style="text-align:right;font-weight:bold">มูลค่าสต็อกรวม: ${total.toLocaleString()} บาท</div>`;}
-      if(tab==='lowstock'){const list=data.filter(m=>m.current_stock<=m.min_stock);html=list.length?`<table>${list.map(m=>`<tr><td>${m.name}</td><td>${m.current_stock}/${m.min_stock}</td></tr>`).join('')}</table>`:'<div style="text-align:center;color:#4caf50"><i class="bi bi-check-circle"></i><br>ไม่มีวัสดุต่ำกว่าขั้นต่ำ</div>`;}
-      if(tab==='expiry'){const list=data.filter(m=>m.category==='ยา'&&m.expiry_date);html=list.length?`<table>${list.map(m=>`<tr><td>${m.name}</td><td>${new Date(m.expiry_date).toLocaleDateString('th-TH')}</td></tr>`).join('')}</table>`:'<div style="text-align:center;color:#4caf50"><i class="bi bi-check-circle"></i><br>ไม่มียาในสต็อก</div>`;}
+      if(tab==='stock'){
+        const total=data.reduce((a,m)=>a+m.current_stock*m.price,0);
+        html=`<table><tr><th>ชื่อ</th><th>คงเหลือ</th><th>ราคา</th><th>มูลค่า</th></tr>
+              ${data.map(m=>`<tr><td>${m.name}</td><td>${m.current_stock}</td><td>${m.price}</td><td>${m.current_stock*m.price}</td></tr>`).join('')}
+              </table><div style="text-align:right;font-weight:bold">มูลค่าสต็อกรวม: ${total.toLocaleString()} บาท</div>`;
+      }
+      if(tab==='lowstock'){
+        const list=data.filter(m=>m.current_stock<=m.min_stock);
+        html=list.length
+          ? `<table>${list.map(m=>`<tr><td>${m.name}</td><td>${m.current_stock}/${m.min_stock}</td></tr>`).join('')}</table>`
+          : '<div style="text-align:center;color:#4caf50"><i class="bi bi-check-circle"></i><br>ไม่มีวัสดุต่ำกว่าขั้นต่ำ</div>';
+      }
+      if(tab==='expiry'){
+        const list=data.filter(m=>m.category==='ยา'&&m.expiry_date);
+        html=list.length
+          ? `<table>${list.map(m=>`<tr><td>${m.name}</td><td>${new Date(m.expiry_date).toLocaleDateString('th-TH')}</td></tr>`).join('')}</table>`
+          : '<div style="text-align:center;color:#4caf50"><i class="bi bi-check-circle"></i><br>ไม่มียาในสต็อก</div>';
+      }
       $('reportContent').innerHTML=html;
     }
+
+    /* ========= Settings ========= */
     async function loadSettings(){
       const {data}=await supabase.from('settings').select().in('key',['itemsPerPage','dateFormat']);
-      if(data){data.forEach(d=>{if(d.key==='itemsPerPage')$('settingsItemsPerPage').value=d.value;if(d.key==='dateFormat')$('settingsDateFormat').value=d.value;});}
-      itemsPerPage=parseInt($('settingsItemsPerPage').value||10);dateFormat=$('settingsDateFormat').value||'th-TH';
+      if(data){
+        data.forEach(d=>{
+          if(d.key==='itemsPerPage') $('settingsItemsPerPage').value = d.value;
+          if(d.key==='dateFormat')   $('settingsDateFormat').value   = d.value;
+        });
+      }
+      itemsPerPage = parseInt($('settingsItemsPerPage').value || 10);
+      dateFormat   = $('settingsDateFormat').value || 'th-TH';
     }
     async function saveSettings(){
-      await supabase.from('settings').upsert([{key:'itemsPerPage',value:$('settingsItemsPerPage').value},{key:'dateFormat',value:$('settingsDateFormat').value}]);
-      itemsPerPage=parseInt($('settingsItemsPerPage').value);dateFormat=$('settingsDateFormat').value;renderMaterialsTable();renderTransactionsTable();showToast('บันทึกการตั้งค่าแล้ว');
+      await supabase.from('settings').upsert([
+        {key:'itemsPerPage', value:$('settingsItemsPerPage').value},
+        {key:'dateFormat',   value:$('settingsDateFormat').value}
+      ]);
+      itemsPerPage = parseInt($('settingsItemsPerPage').value);
+      dateFormat   = $('settingsDateFormat').value;
+      renderMaterialsTable();
+      renderTransactionsTable();
+      alert('บันทึกการตั้งค่าแล้ว');
     }
-    /* ---------- Budget ---------- */
+
+    /* ========= Budget ========= */
+    async function loadBudgetForm(){
+      generateBudgetNo();
+      await loadAccountCodes();          // โหลดรหัสบัญชีจากตาราง
+    }
+    async function loadAccountCodes(){
+      const {data}=await supabase.from('account_codes').select('code,name').order('code');
+      const sel=$('budgetAccountCode');
+      sel.innerHTML='<option value="">-- เลือก --</option>';
+      data.forEach(r=>{
+        accountMap[r.code]=r.name;
+        sel.innerHTML+=`<option value="${r.code}">${r.code} - ${r.name}</option>`;
+      });
+    }
     function generateBudgetNo(){
-      const y=new Date().getFullYear()+543;const key=`budgetNo_${y}`;const current=parseInt(localStorage.getItem(key)||"0",10)+1;localStorage.setItem(key,current);$('budgetRequestNo').value=`ครั้งที่ ${current}/${y}`;
+      const y=new Date().getFullYear()+543;
+      const key=`budgetNo_${y}`;
+      const current=(parseInt(localStorage.getItem(key)||"0",10))+1;
+      localStorage.setItem(key,current);
+      $('budgetRequestNo').value=`ครั้งที่ ${current}/${y}`;
     }
     function handleBudgetCodeChange(){
-      $('budgetMaterialSection').classList.toggle('hidden',$('budgetAccountCode').value!=='53040100');
+      const show=$('budgetAccountCode').value==='53040100';
+      $('budgetMaterialSection').classList.toggle('hidden',!show);
     }
     function addBudgetRow(){
-      const tbody=$('budgetMaterialBody');const tr=document.createElement('tr');tr.innerHTML=`<td><input class="material-input" placeholder="เช่น กระดาษ A4" required></td><td><input class="material-input" type="number" min="1" required></td><td><input class="material-input" placeholder="รีม" required></td><td><i class="bi bi-trash del-row-btn" onclick="this.parentNode.parentNode.remove()"></i></td>`;tbody.appendChild(tr);
+      const tbody=$('budgetMaterialBody');
+      const tr=document.createElement('tr');
+      tr.innerHTML=`
+        <td><input class="material-input" placeholder="เช่น กระดาษ A4" required></td>
+        <td><input class="material-input" type="number" min="1" required></td>
+        <td><input class="material-input" placeholder="รีม" required></td>
+        <td><i class="bi bi-trash del-row-btn" onclick="this.parentNode.parentNode.remove()"></i></td>`;
+      tbody.appendChild(tr);
     }
     function resetBudgetForm(){
-      $('budgetAccountCode').value='';$('budgetAmount').value='';$('budgetNote').value='';$('budgetMaterialBody').innerHTML='';$('budgetMaterialSection').classList.add('hidden');
+      $('budgetAccountCode').value='';
+      $('budgetAmount').value='';
+      $('budgetNote').value='';
+      $('budgetMaterialBody').innerHTML='';
+      $('budgetMaterialSection').classList.add('hidden');
     }
     async function sendBudgetRequest(e){
       e.preventDefault();
+      const code=$('budgetAccountCode').value;
       const payload={
         request_no:$('budgetRequestNo').value,
         requester:$('budgetRequester').value,
         request_date:$('budgetRequestDate').value,
-        account_code:$('budgetAccountCode').value,
-        account_name:accountMap[$('budgetAccountCode').value],
+        account_code:code,
+        account_name:accountMap[code],
         amount:parseFloat($('budgetAmount').value),
         note:$('budgetNote').value,
-        material_list:$('budgetAccountCode').value==='53040100'?Array.from($('budgetMaterialBody').rows).map(r=>{const c=r.querySelectorAll('.material-input');return {item:c[0].value,qty:c[1].value,unit:c[2].value};}):[]
+        material_list: code==='53040100'
+          ? Array.from($('budgetMaterialBody').rows).map(r=>{
+              const c=r.querySelectorAll('.material-input');
+              return {item:c[0].value, qty:c[1].value, unit:c[2].value};
+            })
+          : []
       };
       const {error}=await supabase.from('budget_requests').insert([payload]);
       if(error){alert(error.message);return;}
-      await fetch("https://YOUR_PROJECT.supabase.co/functions/v1/sendMail",{
+
+      // ส่งอีเมล (ต้องมี Edge Function sendMail)
+      await fetch("https://zubrflyhzsmqngfbjkpg.supabase.co/functions/v1/sendMail",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({to:'sorawitt@gmail.com',cc:'kimhun645@gmail.com',subject:`ขออนุมัติใช้งบ ${payload.account_name} (${payload.request_no})`,body:`เรียน ผจศ.\n\nเลขที่คำขอ: ${payload.request_no}\nผู้ขอ: ${payload.requester}\nวันที่ขอ: ${payload.request_date}\nวงเงิน: ${payload.amount.toLocaleString()} บาท\n${payload.material_list.length ? 'รายการวัสดุทั่วไป:\n' + payload.material_list.map((m,i)=>`${i+1}. ${m.item} ${m.qty} ${m.unit}`).join('\n') : ''}\n\nหมายเหตุ: ${payload.note}\n\nโปรดคลิกอนุมัติ/ปฏิเสธที่: https://yourdomain.com/approve.html?id=${payload.request_no}`})
+        body:JSON.stringify({
+          to:'sorawitt@gmail.com',
+          cc:'kimhun645@gmail.com',
+          subject:`ขออนุมัติใช้งบ ${payload.account_name} (${payload.request_no})`,
+          body:`เรียน ผจศ.\n\nเลขที่คำขอ: ${payload.request_no}\nผู้ขอ: ${payload.requester}\nวันที่ขอ: ${payload.request_date}\nวงเงิน: ${payload.amount.toLocaleString()} บาท\n${payload.material_list.length ? 'รายการวัสดุทั่วไป:\n'+payload.material_list.map((m,i)=>`${i+1}. ${m.item} ${m.qty} ${m.unit}`).join('\n') : ''}\n\nหมายเหตุ: ${payload.note}\n\nโปรดคลิกอนุมัติ/ปฏิเสธที่: https://office-ebon-psi.vercel.app/approve.html?id=${payload.request_no}`
+        })
       });
-      resetBudgetForm();generateBudgetNo();showToast('ส่งคำขอสำเร็จ');
+      resetBudgetForm();
+      generateBudgetNo();
+      alert('ส่งคำขอสำเร็จ');
     }
 
-    /* ---------- ตั้งค่าเริ่มต้น ---------- */
-    document.addEventListener('DOMContentLoaded',()=>{showPage('dashboard');loadBudgetForm();});
+    /* ========= Pagination Helper ========= */
+    function renderPagination(containerId, current, total, callback){
+      const box=$(containerId);
+      if(!box) return;
+      box.innerHTML='';
+      for(let i=1;i<=total;i++){
+        const btn=document.createElement('button');
+        btn.textContent=i;
+        btn.className=i===current?'active':'';
+        btn.onclick=()=>callback(i);
+        box.appendChild(btn);
+      }
+    }
+
+    /* ========= Init ========= */
+    document.addEventListener('DOMContentLoaded',()=>{
+      showPage('dashboard');
+    });
   </script>
 </body>
 </html>
