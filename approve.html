@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>อนุมัติคำขอใช้งบประมาณ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body{font-family:'Noto Sans Thai',sans-serif;background:#f7fafd;margin:0;padding:20px;color:#212b36}
+    .card{max-width:600px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);padding:32px 40px}
+    h2{color:#2196f3;margin-top:0}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px}
+    th,td{padding:8px 12px;border-bottom:1px solid #eef1f6}
+    th{background:#f7fafd;text-align:left}
+    .btn-group{display:flex;gap:12px;justify-content:flex-end}
+    .btn{padding:10px 28px;border:none;border-radius:8px;font-size:1rem;cursor:pointer}
+    .btn-approve{background:#4caf50;color:#fff}
+    .btn-reject{background:#f44336;color:#fff}
+    .btn-back{background:#fff;color:#2196f3;border:1px solid #2196f3}
+    .hidden{display:none}
+    .info{margin-bottom:20px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2><i class="bi bi-check-circle"></i> อนุมัติคำขอใช้งบประมาณ</h2>
+    <div id="loading">กำลังโหลดข้อมูล...</div>
+
+    <div id="requestDetail" class="hidden">
+      <div class="info">
+        <strong>เลขที่คำขอ:</strong> <span id="reqNo"></span><br>
+        <strong>ผู้ขอ:</strong> <span id="reqRequester"></span><br>
+        <strong>วันที่ขอ:</strong> <span id="reqDate"></span><br>
+        <strong>รหัสบัญชี:</strong> <span id="reqAccount"></span><br>
+        <strong>วงเงิน:</strong> <span id="reqAmount"></span> บาท<br>
+        <strong>หมายเหตุ:</strong> <span id="reqNote"></span>
+      </div>
+
+      <div id="materialListWrapper" class="hidden">
+        <h4>รายการวัสดุทั่วไป</h4>
+        <table id="materialList"></table>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-approve" onclick="decide(true)">อนุมัติ</button>
+        <button class="btn btn-reject" onclick="decide(false)">ปฏิเสธ</button>
+        <button class="btn btn-back" onclick="location.href='/'">กลับ</button>
+      </div>
+    </div>
+
+    <div id="result" class="hidden">
+      <p id="resultText"></p>
+      <button class="btn btn-back" onclick="location.href='/'">กลับหน้าหลัก</button>
+    </div>
+  </div>
+
+  <script>
+     const supabase = supabase.createClient(
+      'https://zubrflyhzsmqngfbjkpg.supabase.co',   // ← แก้
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1YnJmbHloenNtcW5nZmJqa3BnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MjA4NjAsImV4cCI6MjA2ODQ5Njg2MH0.SIDLeNDWphs1LxPLO5Mg37oCUB_8eAvfRIz5lCfle8g'                       // ← แก้
+    );
+
+
+    const params = new URLSearchParams(location.search);
+    const requestNo = params.get('id');
+
+    async function loadRequest() {
+      if (!requestNo) return;
+      const { data, error } = await supabase
+        .from('budget_requests')
+        .select('*')
+        .eq('request_no', requestNo)
+        .single();
+
+      if (error || !data) {
+        document.getElementById('loading').textContent = 'ไม่พบคำขอนี้';
+        return;
+      }
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('requestDetail').classList.remove('hidden');
+
+      document.getElementById('reqNo').textContent = data.request_no;
+      document.getElementById('reqRequester').textContent = data.requester;
+      document.getElementById('reqDate').textContent = new Date(data.request_date).toLocaleDateString('th-TH');
+      document.getElementById('reqAccount').textContent = `${data.account_code} - ${data.account_name}`;
+      document.getElementById('reqAmount').textContent = data.amount.toLocaleString();
+      document.getElementById('reqNote').textContent = data.note || '-';
+
+      if (data.material_list && data.material_list.length) {
+        document.getElementById('materialListWrapper').classList.remove('hidden');
+        const tbody = document.getElementById('materialList');
+        tbody.innerHTML = data.material_list
+          .map((m, i) => `<tr><td>${i + 1}. ${m.item}</td><td>${m.qty} ${m.unit}</td></tr>`)
+          .join('');
+      }
+    }
+
+    async function decide(approved) {
+      const { error } = await supabase
+        .from('budget_requests')
+        .update({ status: approved ? 'อนุมัติ' : 'ปฏิเสธ', approved_at: new Date() })
+        .eq('request_no', requestNo);
+
+      document.getElementById('requestDetail').classList.add('hidden');
+      document.getElementById('result').classList.remove('hidden');
+      document.getElementById('resultText').innerHTML = `
+        <i class="bi ${approved ? 'bi-check-circle text-success' : 'bi-x-circle text-danger'}" style="font-size:2rem"></i><br>
+        คำขอถูก<strong>${approved ? 'อนุมัติ' : 'ปฏิเสธ'}</strong>เรียบร้อย
+      `;
+
+      // ส่งอีเมลแจ้งผล
+      await fetch("https://zubrflyhzsmqngfbjkpg.supabase.co/functions/v1/sendMail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: 'sorawitt@gmail.com',
+          subject: `ผลการอนุมัติคำขอ ${requestNo}`,
+          body: `คำขอเลขที่ ${requestNo} ได้รับการ${approved ? 'อนุมัติ' : 'ปฏิเสธ'}`
+        })
+      });
+    }
+
+    loadRequest();
+  </script>
+</body>
+</html>

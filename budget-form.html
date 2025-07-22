@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>แบบฟอร์มขออนุมัติใช้งบประมาณ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.emailjs.com/sdk/3.2.0/email.min.js"></script>
+  <style>
+    body{font-family:'Noto Sans Thai',sans-serif;background:#f7fafd;margin:0;padding:30px;color:#212529}
+    .container{max-width:780px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.1);padding:30px}
+    h2{color:#0d47a1;margin-top:0;text-align:center;margin-bottom:25px}
+    label{font-weight:600;margin-top:12px;display:block}
+    input,select,textarea{width:100%;padding:8px 12px;border:1px solid #ccc;border-radius:6px;font-size:1rem}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:8px 12px;border:1px solid #ddd}
+    th{background:#e3f2fd;font-weight:600}
+    .btn-group{display:flex;justify-content:flex-end;gap:12px;margin-top:25px}
+    .btn-main{background:#1976d2;color:#fff;border:none;border-radius:6px;padding:10px 28px;font-size:1rem;cursor:pointer}
+    .btn-outline{background:#fff;color:#1976d2;border:1px solid #1976d2;border-radius:6px;padding:10px 28px;font-size:1rem;cursor:pointer}
+    .hidden{display:none}
+    #emailPreview{border:1px solid #ccc;border-radius:6px;background:#fafafa;padding:16px;margin-top:20px;white-space:pre-wrap;font-size:.95rem}
+    .material-input{width:100%;border:none;background:transparent;padding:4px 6px;font-size:1rem}
+    .add-row-btn{color:#1976d2;font-size:1.4rem;cursor:pointer}
+    .del-row-btn{color:#d32f2f;font-size:1.2rem;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>แบบฟอร์มขออนุมัติใช้งบประมาณ</h2>
+
+    <!-- เลขที่อัตโนมัติ -->
+    <label>เลขที่คำขอ</label>
+    <input type="text" id="requestNo" readonly>
+
+    <label>วันที่ขออนุมัติ</label>
+    <input type="date" id="requestDate" required>
+
+    <label>ผู้ขอใช้งบประมาณ</label>
+    <input type="text" id="requester" placeholder="ระบุชื่อ-นามสกุล" required>
+
+    <label>อีเมล์ผู้อนุมัติ</label>
+    <input type="email" id="approverEmail" value="ผจศ@example.com" required>
+
+    <label>อีเมล์ผู้ที่เกี่ยวข้อง (CC)</label>
+    <input type="email" id="ccEmail" placeholder="เช่น accounting@example.com">
+
+    <label>รหัสบัญชี</label>
+    <select id="accountCode" onchange="handleCodeChange()">
+      <option value="">-- เลือกรหัสบัญชี --</option>
+      <option value="52021100">52021100 - ค่าใช้จ่ายกิจกรรมส่งเสริมค่านิยมร่วมขององค์กร</option>
+      <option value="53010200">53010200 - ค่าไฟฟ้า</option>
+      <option value="53010300">53010300 - ค่าน้ำประปา</option>
+      <option value="53010400">53010400 - ค่าโทรศัพท์</option>
+      <option value="53040100">53040100 - ค่าวัสดุทั่วไป</option>
+      <option value="53040200">53040200 - ค่าวัสดุงานบ้านงานครัว</option>
+      <option value="53103600">53103600 - ค่าจัดประชุม/ชี้แจง</option>
+      <option value="53101500">53101500 - ค่าใช้จ่ายในการจัดงานและพิธีต่าง ๆ</option>
+      <option value="53109900">53109900 - ค่าใช้จ่ายเบ็ดเตล็ด</option>
+    </select>
+
+    <label>วงเงินที่ขอใช้ (บาท)</label>
+    <input type="number" id="amount" min="0" step="0.01" required>
+
+    <label>หมายเหตุเพิ่มเติม</label>
+    <textarea id="note" rows="3" placeholder="เช่น ใช้สำหรับกิจกรรม..."></textarea>
+
+    <!-- ตารางวัสดุเฉพาะ 53040100 -->
+    <div id="materialSection" class="hidden">
+      <label>รายการวัสดุทั่วไป</label>
+      <table id="materialTable">
+        <thead>
+          <tr>
+            <th style="width:45%">รายการ</th>
+            <th style="width:20%">จำนวน</th>
+            <th style="width:20%">หน่วย</th>
+            <th style="width:15%">
+              <i class="bi bi-plus-circle add-row-btn" onclick="addRow()" title="เพิ่มแถว"></i>
+            </th>
+          </tr>
+        </thead>
+        <tbody id="materialBody"></tbody>
+      </table>
+    </div>
+
+    <div class="btn-group">
+      <button type="button" class="btn-outline" onclick="resetForm()">ล้างฟอร์ม</button>
+      <button type="button" class="btn-main" onclick="sendEmailJS()">ส่งคำขอ</button>
+    </div>
+
+    <!-- ตัวอย่างอีเมล -->
+    <div id="emailPreview" class="hidden"></div>
+  </div>
+
+  <script>
+    /* ========== เริ่ม EmailJS ========== */
+    (function(){
+      emailjs.init("MK2OUomFmzWPrHpMW");   // เปลี่ยนเป็น User ID ของคุณ
+    })();
+
+    /* สร้างเลขที่อัตโนมัติ ครั้งที่ 1/2568, 2/2568 ... */
+    function generateRequestNo(){
+      const year = new Date().getFullYear() + 543;
+      // เก็บเลขล่าสุดใน localStorage
+      const key = `reqNo_${year}`;
+      const current = parseInt(localStorage.getItem(key) || "0", 10) + 1;
+      localStorage.setItem(key, current);
+      return `ครั้งที่ ${current}/${year}`;
+    }
+    document.getElementById('requestNo').value = generateRequestNo();
+    document.getElementById('requestDate').valueAsDate = new Date();
+
+    const accountMap = {
+      '52021100':'ค่าใช้จ่ายกิจกรรมส่งเสริมค่านิยมร่วมขององค์กร',
+      '53010200':'ค่าไฟฟ้า',
+      '53010300':'ค่าน้ำประปา',
+      '53010400':'ค่าโทรศัพท์',
+      '53040100':'ค่าวัสดุทั่วไป',
+      '53040200':'ค่าวัสดุงานบ้านงานครัว',
+      '53103600':'ค่าจัดประชุม/ชี้แจง',
+      '53101500':'ค่าใช้จ่ายในการจัดงานและพิธีต่าง ๆ',
+      '53109900':'ค่าใช้จ่ายเบ็ดเตล็ด'
+    };
+    const $ = id => document.getElementById(id);
+
+    function handleCodeChange(){
+      $('materialSection').classList.toggle('hidden', $('accountCode').value !== '53040100');
+    }
+
+    function addRow(){
+      const tbody = $('materialBody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input class="material-input" placeholder="เช่น กระดาษ A4" required></td>
+        <td><input class="material-input" type="number" min="1" required></td>
+        <td><input class="material-input" placeholder="รีม" required></td>
+        <td><i class="bi bi-trash del-row-btn" onclick="this.parentNode.parentNode.remove()" title="ลบแถว"></i></td>`;
+      tbody.appendChild(tr);
+    }
+
+    function resetForm(){
+      $('accountCode').value = '';
+      $('requestDate').valueAsDate = new Date();
+      $('requester').value = '';
+      $('amount').value = '';
+      $('note').value = '';
+      $('materialBody').innerHTML = '';
+      $('materialSection').classList.add('hidden');
+    }
+
+    function sendEmailJS(){
+      const code = $('accountCode').value;
+      const accountName = accountMap[code];
+      const amount = $('amount').value;
+      const requester = $('requester').value;
+      const requestDate = $('requestDate').value;
+      const approver = $('approverEmail').value;
+      const cc = $('ccEmail').value;
+      const note = $('note').value;
+      const requestNo = $('requestNo').value;
+
+      if(!code || !amount || !requester){
+        alert('กรุณากรอกข้อมูลให้ครบถ้วน'); return;
+      }
+
+      let materialList = '';
+      if(code === '53040100'){
+        const rows = Array.from($('materialBody').rows).map(r=>{
+          const cells = r.querySelectorAll('.material-input');
+          return cells.length===3 ? {item:cells[0].value,qty:cells[1].value,unit:cells[2].value} : null;
+        }).filter(Boolean);
+        if(rows.length){
+          materialList = rows.map((r,i)=>`${i+1}. ${r.item} จำนวน ${r.qty} ${r.unit}`).join('\n');
+        }
+      }
+
+      const body = `เรียน ผจศ.
+
+เรื่อง ขออนุมัติใช้งบประมาณ ${accountName}
+เลขที่คำขอ: ${requestNo}
+ผู้ขอ: ${requester}
+วันที่ขอ: ${requestDate}
+วงเงิน: ${parseFloat(amount).toLocaleString()} บาท
+${materialList ? '\nเพื่อซื้อวัสดุทั่วไปตามรายการดังต่อไปนี้:\n' + materialList : ''}
+
+หมายเหตุ: ${note}
+
+จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ`;
+
+      /* ส่งผ่าน EmailJS */
+      emailjs.send("service_f2t090t","template_1il10jx",{
+        to_email: "sorawitt@gmail.com",
+  cc_email: "wasan.araya@gmail.com",
+  subject: `ขออนุมัติใช้งบประมาณ ${accountName} (${requestNo})`,
+  message: `เรียน ผจศ.
+
+เลขที่คำขอ: ${requestNo}
+ผู้ขอ: ${requester}
+วงเงิน: ${amount} บาท
+
+กรุณาคลิกลิงก์เพื่อดำเนินการ:
+อนุมัติ: https://yourdomain.com/approve.html?decision=APPROVE&no=${requestNo}&req=${encodeURIComponent(requester)}&acc=${encodeURIComponent(accountName)}&amt=${amount}&to=somchai@example.com
+
+ปฏิเสธ: https://yourdomain.com/approve.html?decision=REJECT&no=${requestNo}&req=${encodeURIComponent(requester)}&acc=${encodeURIComponent(accountName)}&amt=${amount}&to=somchai@example.com
+
+หมายเหตุ: ${note}`
+});
+  </script>
+</body>
+</html>
