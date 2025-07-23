@@ -871,34 +871,34 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
 
     async function sendBudgetRequest(requestData, approverName, approverEmail, ccEmails) {
-        showLoading(true, 'กำลังบันทึกและส่งคำขอ...');
-        try {
-            // 1. Save the request to the database
-            const { data: savedRequest, error: saveError } = await db.from('budget_requests')
-                .insert({
-                    ...requestData,
-                    status: 'PENDING'
-                })
-                .select()
-                .single();
+    showLoading(true, 'กำลังบันทึกและส่งคำขอ...');
+    try {
+        // 1. Save the request to the database
+        const { data: savedRequest, error: saveError } = await db.from('budget_requests')
+            .insert({
+                ...requestData,
+                status: 'PENDING'
+            })
+            .select()
+            .single();
 
-            if (saveError) throw saveError;
+        if (saveError) throw saveError;
 
-            // 2. Invoke Edge Function to send email
+        // 2. Send Email (ใช้ EmailJS)
         await sendEmailJS(requestData, approverName, approverEmail, ccEmails);
- 
-            closeModal();
-            showToast('ส่งคำขออนุมัติเรียบร้อยแล้ว');
-            // Optionally, clear the form
-            renderBudgetRequestPage();
 
-        } catch (error) {
-            console.error('Send budget request error:', error);
-            showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
-        } finally {
-            showLoading(false);
-        }
+        closeModal();
+        showToast('ส่งคำขออนุมัติเรียบร้อยแล้ว');
+        // Optionally, clear the form
+        renderBudgetRequestPage();
+
+    } catch (error) {
+        console.error('Send budget request error:', error);
+        showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+    } finally {
+        showLoading(false);
     }
+}
 
     /*
     ====================================================================================================
