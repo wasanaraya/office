@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ระบบจัดการวัสดุสำนักงาน Deluxe (Supabase)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* === Base Styles (No major changes) === */
+    body { font-family: 'Noto Sans Thai', sans-serif; background: #f7fafd; margin: 0; padding: 0; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 240px; background: #fff; border-right: 1.5px solid #e3e7ee; display: flex; flex-direction: column; z-index: 2; }
+    .sidebar-logo { font-weight: bold; color: #2196f3; font-size: 1.25rem; padding: 34px 32px 17px 32px; }
+    .sidebar-menu { list-style: none; margin: 0; padding: 0 0 12px 0; flex: 1; }
+    .sidebar-menu a { display: flex; align-items: center; gap: 13px; padding: 13px 32px; color: #212b36; text-decoration: none; font-size: 1.08rem; border-left: 4px solid transparent; transition: .19s; border-radius: 8px 0 0 8px; cursor: pointer; }
+    .sidebar-menu a.active, .sidebar-menu a:hover { background: #e6f2fe; color: #2196f3; border-left-color: #2196f3; }
+    .sidebar-footer { padding: 15px 32px 8px 32px; font-size: .98rem; color: #b3b9c9; }
+    .main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { background: #2196f3; color: #fff; padding: 22px 36px; font-size: 1.35rem; letter-spacing: 1px; font-weight: bold; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 6px 0 #e6eaf3; }
+    .content-area { flex: 1 1 auto; overflow-y: auto; padding: 44px 52px 40px 52px; min-height: 0; }
+    .page-title { font-size: 1.45rem; font-weight: bold; color: #222; margin-bottom: 25px; }
+    .section-card { background: #fff; border-radius: 18px; box-shadow: 0 4px 20px 0 #e3eaf3; padding: 32px 40px 28px 40px; margin-bottom: 28px; }
+    table { width: 100%; border-collapse: collapse; font-size: 1.03rem; }
+    th, td { padding: 12px 14px; border-bottom: 1.5px solid #eef1f6; text-align: left; }
+    th { background: #f7fafd; font-weight: 700; }
+    .btn-main { background: #2196f3; color: #fff; border: none; border-radius: 8px; padding: 10px 32px; font-size: 1.08rem; cursor: pointer; transition: background .2s; }
+    .btn-main:hover { background: #176ac4; }
+    .btn-outline { border: 1.7px solid #d1d9e6; background: #fff; color: #333; border-radius: 8px; padding: 10px 24px; font-size: 1.08rem; margin-right: 7px; cursor: pointer; transition: background .2s, border-color .2s; }
+    .btn-outline:hover { background: #f7fafd; border-color: #b3b9c9; }
+    .btn-danger { background: #f44336; color: #fff; }
+    .btn-danger:hover { background: #d32f2f; }
+    .modal-custom { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,.5); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .modal-custom.show { opacity: 1; pointer-events: auto; }
+    .modal-dialog { background: #fff; border-radius: 12px; padding: 24px; max-width: 600px; width: 90%; transform: scale(.95); transition: transform .2s; }
+    .modal-custom.show .modal-dialog { transform: scale(1); }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: 500; }
+    .form-control { box-sizing: border-box; width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+    .form-control:focus { outline: none; border-color: #2196f3; box-shadow: 0 0 0 2px rgba(33,150,243,.2); }
+    .toast-container { position: fixed; top: 30px; right: 30px; z-index: 3000; }
+    .toast { background: #2196f3; color: #fff; padding: 13px 22px; border-radius: 12px; margin-bottom: 10px; min-width: 160px; box-shadow: 0 4px 12px rgba(0,0,0,.15); opacity: 0; transform: translateX(100%); animation: slideIn .3s forwards; }
+    .toast.danger { background: #f44336; }
+    @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+    .pagination { display: flex; gap: 5px; justify-content: center; margin-top: 20px; }
+    .pagination button { padding: 8px 12px; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 6px; }
+    .pagination button.active { background: #2196f3; color: #fff; border-color: #2196f3; }
+    .search-input { padding: 8px 13px; border-radius: 7px; border: 1px solid #d1d9e6; margin-left: 12px; width: 240px; }
+    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); display: flex; align-items: center; justify-content: center; z-index: 9999; font-size: 1.5em; color: #2196f3; }
+    .tab-btn { padding: 10px 20px; font-size: 1rem; border: none; background: transparent; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1.5px; /* Align with bottom border */ }
+    .tab-btn.active { border-bottom-color: #2196f3; color: #2196f3; font-weight: bold; }
+    .table-action-btn { background: none; border: none; cursor: pointer; font-size: 1.2rem; color: #777; padding: 5px; }
+    .table-action-btn:hover { color: #2196f3; }
+    @media(max-width:768px){ .sidebar{display:none;} .content-area{padding:20px;} .section-card{padding:20px;} }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading-overlay">
+    <i class="bi bi-arrow-repeat" style="animation:spin 1s linear infinite; margin-right: 10px;"></i> กำลังเชื่อมต่อฐานข้อมูล...
+  </div>
+  <!-- Hidden inputs for barcode scanner -->
+  <input type="text" id="materialBarcodeScanInput" style="position:absolute; left:-9999px;">
+  <input type="text" id="transactionBarcodeScanInput" style="position:absolute; left:-9999px;">
+
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-logo">วัสดุ Deluxe</div>
+      <ul class="sidebar-menu">
+        <li><a href="#" class="active" onclick="showPage('dashboard')"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+        <li><a href="#" onclick="showPage('materials')"><i class="bi bi-box"></i> วัสดุ</a></li>
+        <li><a href="#" onclick="showPage('transactions')"><i class="bi bi-arrow-left-right"></i> รับ-จ่าย</a></li>
+        <li><a href="#" onclick="showPage('budget-request')"><i class="bi bi-currency-dollar"></i> ขอใช้งบประมาณ</a></li>
+        <li><a href="#" onclick="showPage('report')"><i class="bi bi-clipboard-data"></i> รายงาน</a></li>
+        <li><a href="#" onclick="showPage('settings')"><i class="bi bi-gear"></i> ตั้งค่า</a></li>
+      </ul>
+      <div class="sidebar-footer">Deluxe ver. 2025</div>
+    </nav>
+
+    <div class="main">
+      <div class="topbar">
+        <span><i class="bi bi-app-indicator"></i> ระบบจัดการวัสดุสำนักงาน</span>
+        <span><i class="bi bi-person-circle"></i></span>
+      </div>
+
+      <div class="content-area">
+        <!-- All pages will be rendered by JS -->
+        <div id="page-dashboard" style="display:none;"></div>
+        <div id="page-materials" style="display:none;"></div>
+        <div id="page-transactions" style="display:none;"></div>
+        <div id="page-budget-request" style="display:none;"></div>
+        <div id="page-report" style="display:none;"></div>
+        <div id="page-settings" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+  <div id="modalContainer"></div>
+
+  <script type="module">
+    // =================================================================
+    //  SUPABASE CONNECTION
+    // =================================================================
+  const SUPABASE_URL = 'https://zubrflyhzsmqngfbjkpg.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1YnJmbHloenNtcW5nZmJqa3BnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MjA4NjAsImV4cCI6MjA2ODQ5Njg2MH0.SIDLeNDWphs1LxPLO5Mg37oCUB_8eAvfRIz5lCfle8g';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // =================================================================
+    //  STATE MANAGEMENT
+    // =================================================================
+    let materials = [];
+    let transactions = [];
+    let accountCodes = [];
+    let settings = { items_per_page: 10 };
+    let currentPage = 1, currentTransactionPage = 1;
+
+    /** Loads all initial data from Supabase */
+    async function loadData() {
+      showLoading(true, 'กำลังโหลดข้อมูล...');
+      try {
+        const [materialsRes, transactionsRes, settingsRes, accountCodesRes] = await Promise.all([
+            db.from('materials').select('*'),
+            db.from('transactions').select('*').order('transaction_date', { ascending: false }),
+            db.from('settings').select('key, value'),
+            db.from('account_codes').select('*').eq('is_active', true).order('code')
+        ]);
+
+        if (materialsRes.error) throw materialsRes.error;
+        materials = materialsRes.data;
+
+        if (transactionsRes.error) throw transactionsRes.error;
+        transactions = transactionsRes.data.map(t => ({...t, transaction_date: new Date(t.transaction_date)}));
+        
+        if (accountCodesRes.error) throw accountCodesRes.error;
+        accountCodes = accountCodesRes.data;
+
+        if (settingsRes.error) throw settingsRes.error;
+        if (settingsRes.data && settingsRes.data.length > 0) {
+            // Convert array of {key, value} to a single settings object
+            settings = settingsRes.data.reduce((acc, setting) => {
+                acc[setting.key] = setting.value;
+                return acc;
+            }, {});
+            settings.items_per_page = parseInt(settings.items_per_page) || 10;
+        }
+
+      } catch (error) {
+        console.error('Error loading data:', error);
+        showToast(`เกิดข้อผิดพลาดในการโหลดข้อมูล: ${error.message}`, 'danger');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // =================================================================
+    //  UTILITY & UI FUNCTIONS
+    // =================================================================
+    const $ = id => document.getElementById(id);
+
+    const showLoading = (isLoading, message = 'กำลังประมวลผล...') => {
+        const loader = $('loading');
+        if (isLoading) {
+            loader.innerHTML = `<i class="bi bi-arrow-repeat" style="animation:spin 1s linear infinite; margin-right: 10px;"></i> ${message}`;
+            loader.style.display = 'flex';
+        } else {
+            loader.style.display = 'none';
+        }
+    };
+
+    const showToast = (msg, type = 'success') => {
+      const t = document.createElement('div');
+      t.className = `toast${type === 'danger' ? ' danger' : ''}`;
+      t.textContent = msg;
+      $('toastContainer').appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    };
+
+    const showModal = (html) => {
+      const m = document.createElement('div');
+      m.className = 'modal-custom';
+      m.innerHTML = `<div class="modal-dialog">${html}</div>`;
+      m.onclick = e => { if (e.target === m) closeModal(); };
+      $('modalContainer').appendChild(m);
+      setTimeout(() => m.classList.add('show'), 10);
+    };
+    
+    const closeModal = () => {
+      const modal = document.querySelector('.modal-custom');
+      if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => modal.remove(), 200);
+      }
+    };
+
+    const showConfirm = (title, message, onConfirm) => {
+      showModal(`
+        <h3>${title}</h3>
+        <p>${message}</p>
+        <div style="text-align:right; margin-top:20px;">
+          <button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button>
+          <button type="button" class="btn-main btn-danger" id="confirmDeleteBtn">ยืนยัน</button>
+        </div>
+      `);
+      $('confirmDeleteBtn').onclick = () => {
+        onConfirm();
+        closeModal();
+      };
+    };
+
+    const thaiDate = d => new Date(d).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    // =================================================================
+    //  NAVIGATION & PAGE RENDERING
+    // =================================================================
+    function showPage(page) {
+      document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+      const activeLink = document.querySelector(`.sidebar-menu a[onclick="showPage('${page}')"]`);
+      if (activeLink) activeLink.classList.add('active');
+      
+      document.querySelectorAll('.content-area > div').forEach(p => p.style.display = 'none');
+      const pageElement = $(`page-${page}`);
+      if(!pageElement) {
+          console.error(`Page element not found for page: ${page}`);
+          return;
+      }
+      pageElement.style.display = 'block';
+      pageElement.innerHTML = '<h2><i class="bi bi-arrow-repeat" style="animation:spin 1s linear infinite;"></i> กำลังโหลดเนื้อหา...</h2>'; // Placeholder
+
+      switch(page) {
+        case 'dashboard': renderDashboard(); break;
+        case 'materials': currentPage = 1; renderMaterialsPage(); break;
+        case 'transactions': currentTransactionPage = 1; renderTransactionsPage(); break;
+        case 'budget-request': renderBudgetRequestPage(); break;
+        case 'report': renderReportPage(); break;
+        case 'settings': renderSettingsPage(); break;
+      }
+    }
+
+    function renderDashboard() {
+      const page = $('page-dashboard');
+      const totalItems = materials.length;
+      const totalStockValue = materials.reduce((sum, m) => sum + (m.current_stock * m.price), 0);
+      const lowStockCount = materials.filter(m => m.current_stock <= m.min_stock).length;
+      const recentTransactions = transactions.slice(0, 5);
+
+      page.innerHTML = `
+        <div class="page-title">Dashboard</div>
+        <div class="section-card">
+            <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:30px;">
+              <div style="padding: 24px; border-radius: 15px; flex: 1 1 200px; min-width: 180px; background: #e6f2fe; color: #1e88e5;"><div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 8px;"><i class="bi bi-box-seam"></i> ประเภทวัสดุ</div><div style="font-size: 2.5rem; font-weight: 700;">${totalItems}</div></div>
+              <div style="padding: 24px; border-radius: 15px; flex: 1 1 200px; min-width: 180px; background: #e8f5e9; color: #43a047;"><div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 8px;"><i class="bi bi-cash-stack"></i> มูลค่าสต็อกรวม</div><div style="font-size: 2.5rem; font-weight: 700;">${totalStockValue.toLocaleString('th-TH')}</div></div>
+              <div style="padding: 24px; border-radius: 15px; flex: 1 1 200px; min-width: 180px; background: #ffebee; color: #e53935;"><div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 8px;"><i class="bi bi-exclamation-triangle"></i> ต่ำกว่าขั้นต่ำ</div><div style="font-size: 2.5rem; font-weight: 700;">${lowStockCount}</div></div>
+              <div style="padding: 24px; border-radius: 15px; flex: 1 1 200px; min-width: 180px; background: #f3e5f5; color: #8e24aa;"><div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 8px;"><i class="bi bi-arrow-left-right"></i> ธุรกรรมทั้งหมด</div><div style="font-size: 2.5rem; font-weight: 700;">${transactions.length}</div></div>
+            </div>
+            <div>
+              <h4>รายการล่าสุด</h4>
+              <table>
+                <thead><tr><th>วันที่</th><th>ประเภท</th><th>วัสดุ</th><th>จำนวน</th></tr></thead>
+                <tbody>
+                  ${recentTransactions.map(t => `
+                    <tr>
+                      <td>${thaiDate(t.transaction_date)}</td>
+                      <td><span style="padding:4px 8px;border-radius:4px;color:#fff;background:${t.type === 'in' ? '#4caf50' : '#ff9800'}">${t.type === 'in' ? 'รับ' : 'จ่าย'}</span></td>
+                      <td>${materials.find(m => m.id === t.material_id)?.name || 'N/A'}</td>
+                      <td>${t.quantity}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+        </div>
+      `;
+    }
+
+    function renderMaterialsPage() {
+        const page = $('page-materials');
+        page.innerHTML = `
+            <div class="page-title">รายการวัสดุสำนักงาน</div>
+            <div class="section-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <button class="btn-main" id="addMaterialBtn"><i class="bi bi-plus-circle"></i> เพิ่มวัสดุ</button>
+                    <button class="btn-outline" id="scanMaterialBtn"><i class="bi bi-upc-scan"></i> สแกนค้นหา</button>
+                </div>
+                <input class="search-input" placeholder="ค้นหาชื่อ/รหัส/ประเภท/บาร์โค้ด" id="materialSearch">
+                </div>
+                <div style="overflow-x:auto">
+                <table>
+                    <thead><tr><th>รหัส</th><th>ชื่อวัสดุ</th><th>ประเภท</th><th>คงเหลือ</th><th>จัดการ</th></tr></thead>
+                    <tbody id="materialsTableBody"></tbody>
+                </table>
+                </div>
+                <div id="materialsPagination" class="pagination"></div>
+            </div>
+        `;
+        $('addMaterialBtn').onclick = openAddMaterialModal;
+        $('scanMaterialBtn').onclick = () => focusBarcodeScan('material');
+        $('materialSearch').oninput = renderMaterialsTable;
+        renderMaterialsTable();
+    }
+    
+    function renderTransactionsPage() {
+        const page = $('page-transactions');
+        page.innerHTML = `
+            <div class="page-title">ประวัติรับ-จ่ายวัสดุ</div>
+            <div class="section-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <button class="btn-main" style="background:#4caf50" id="txInBtn"><i class="bi bi-arrow-down-circle"></i> รับเข้า</button>
+                        <button class="btn-main" style="background:#ff9800; margin-left:10px;" id="txOutBtn"><i class="bi bi-arrow-up-circle"></i> จ่ายออก</button>
+                        <button class="btn-outline" style="margin-left:10px;" id="scanTxBtn"><i class="bi bi-upc-scan"></i> สแกนทำรายการ</button>
+                    </div>
+                    <input class="search-input" placeholder="ค้นหาวัสดุ" id="transactionSearch">
+                </div>
+                <div style="overflow-x:auto">
+                    <table>
+                        <thead><tr><th>วันที่</th><th>ประเภท</th><th>วัสดุ</th><th>จำนวน</th><th>จัดการ</th></tr></thead>
+                        <tbody id="transactionsTableBody"></tbody>
+                    </table>
+                </div>
+                <div id="transactionsPagination" class="pagination"></div>
+            </div>
+        `;
+        $('txInBtn').onclick = () => openAddTransactionModal('in');
+        $('txOutBtn').onclick = () => openAddTransactionModal('out');
+        $('scanTxBtn').onclick = () => focusBarcodeScan('transaction');
+        $('transactionSearch').oninput = renderTransactionsTable;
+        renderTransactionsTable();
+    }
+
+    function renderReportPage() {
+        const page = $('page-report');
+        page.innerHTML = `
+            <div class="page-title">รายงาน</div>
+            <div class="section-card">
+                <div style="display:flex; gap:13px; margin-bottom:20px; border-bottom: 1.5px solid #eef1f6;" id="reportTabs">
+                    <button class="tab-btn active" data-tab="stock">รายงานสต็อก</button>
+                    <button class="tab-btn" data-tab="lowstock">วัสดุใกล้หมด</button>
+                    <button class="tab-btn" data-tab="expiry">ยาหมดอายุ</button>
+                </div>
+                <div id="reportContent"></div>
+            </div>
+        `;
+        $('reportTabs').onclick = (e) => {
+            if (e.target.matches('.tab-btn')) {
+                showReportTab(e.target);
+            }
+        };
+        // Initial render of the first tab
+        showReportTab($('reportTabs').querySelector('.active'));
+    }
+
+    // =================================================================
+    //  MATERIALS MANAGEMENT
+    // =================================================================
+    function renderMaterialsTable() {
+      const query = $('materialSearch').value.toLowerCase();
+      const filtered = materials.filter(m => !query || [m.name, m.material_code, m.category, m.barcode].some(f => f && String(f).toLowerCase().includes(query)));
+      
+      const pageCount = Math.ceil(filtered.length / settings.items_per_page);
+      const start = (currentPage - 1) * settings.items_per_page;
+      const paginated = filtered.slice(start, start + settings.items_per_page);
+
+      $('materialsTableBody').innerHTML = paginated.map(m => `
+        <tr>
+          <td>${m.material_code || ''}</td>
+          <td>${m.name}</td>
+          <td>${m.category}</td>
+          <td style="font-weight:bold; color:${m.current_stock <= m.min_stock ? '#f44336' : '#2e7d32'}">${m.current_stock} ${m.unit}</td>
+          <td>
+            <button class="table-action-btn" title="แก้ไข" onclick="window.openEditMaterialModal('${m.id}')"><i class="bi bi-pencil-square"></i></button>
+            <button class="table-action-btn" title="ลบ" onclick="window.deleteMaterial('${m.id}')"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>`).join('');
+      renderPagination('materialsPagination', currentPage, pageCount, window.changeMaterialPage);
+    }
+
+    function openAddMaterialModal() {
+      const categories = [...new Set(materials.map(m => m.category))];
+      showModal(`
+        <h3>เพิ่มวัสดุใหม่</h3>
+        <form id="materialForm">
+          <div class="form-group"><label>ชื่อวัสดุ *</label><input class="form-control" id="matName" required></div>
+          <div class="form-group"><label>ประเภท *</label>
+            <input list="matCategoryList" class="form-control" id="matCategory" required>
+            <datalist id="matCategoryList">${categories.map(c => `<option value="${c}">`).join('')}<option value="ยา"><option value="กระดาษ"><option value="เครื่องเขียน"></datalist>
+          </div>
+          <div class="form-group" id="expiryDateGroup" style="display:none;"><label>วันหมดอายุ</label><input type="date" class="form-control" id="matExpiry"></div>
+          <div class="form-group"><label>รหัสวัสดุ</label><input class="form-control" id="matCode"></div>
+          <div class="form-group"><label>บาร์โค้ด</label><input class="form-control" id="matBarcode" placeholder="สแกนหรือป้อนรหัสบาร์โค้ด"></div>
+          <div style="display:flex; gap:15px;">
+            <div class="form-group" style="flex:1;"><label>จำนวนเริ่มต้น</label><input type="number" class="form-control" id="matStock" min="0" value="0"></div>
+            <div class="form-group" style="flex:1;"><label>จำนวนขั้นต่ำ</label><input type="number" class="form-control" id="matMin" min="0" value="0"></div>
+          </div>
+          <div style="display:flex; gap:15px;">
+            <div class="form-group" style="flex:1;"><label>หน่วยนับ</label><input class="form-control" id="matUnit" placeholder="เช่น รีม, ด้าม, กล่อง"></div>
+            <div class="form-group" style="flex:1;"><label>ราคาต่อหน่วย</label><input type="number" class="form-control" id="matPrice" min="0" step="0.01" value="0"></div>
+          </div>
+          <div class="form-group"><label>ที่จัดเก็บ</label><input class="form-control" id="matLocation" placeholder="เช่น ตู้ A ชั้น 2"></div>
+          <div class="form-group"><label>หมายเหตุ</label><textarea class="form-control" id="matNote" rows="2"></textarea></div>
+          <div style="text-align:right; margin-top:20px;"><button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button><button type="submit" class="btn-main">บันทึก</button></div>
+        </form>`);
+      $('matCategory').addEventListener('input', handleCategoryChange);
+      $('materialForm').onsubmit = (e) => saveMaterial(e);
+    }
+
+    function openEditMaterialModal(id) {
+      const m = materials.find(x => x.id === id);
+      openAddMaterialModal();
+      
+      $('materialForm').onsubmit = (e) => saveMaterial(e, id);
+      $('matName').value = m.name;
+      $('matCategory').value = m.category;
+      $('matCode').value = m.material_code || '';
+      $('matBarcode').value = m.barcode || '';
+      $('matStock').value = m.current_stock;
+      $('matMin').value = m.min_stock;
+      $('matUnit').value = m.unit;
+      $('matPrice').value = m.price;
+      $('matLocation').value = m.location;
+      $('matNote').value = m.note || '';
+      if (m.category === 'ยา') {
+        $('expiryDateGroup').style.display = 'block';
+        $('matExpiry').value = m.expiry_date;
+      }
+    }
+    
+    function handleCategoryChange(event) {
+        const isMedicine = event.target.value === 'ยา';
+        $('expiryDateGroup').style.display = isMedicine ? 'block' : 'none';
+        if (!isMedicine) $('matExpiry').value = '';
+    }
+
+    async function saveMaterial(e, id = null) {
+      e.preventDefault();
+      showLoading(true);
+      const isEditing = id !== null;
+      const initialStock = parseInt($('matStock').value || 0);
+      const materialData = {
+        name: $('matName').value,
+        category: $('matCategory').value,
+        material_code: $('matCode').value || null,
+        barcode: $('matBarcode').value || null,
+        initial_stock: initialStock,
+        current_stock: initialStock,
+        min_stock: parseInt($('matMin').value || 0),
+        unit: $('matUnit').value || null,
+        price: parseFloat($('matPrice').value || 0),
+        location: $('matLocation').value || null,
+        note: $('matNote').value || null,
+        expiry_date: $('matExpiry').value || null,
+      };
+
+      if (isEditing) {
+        materialData.current_stock = parseInt($('matStock').value || 0);
+        delete materialData.initial_stock; 
+      }
+
+      try {
+        if (isEditing) {
+          const { data, error } = await db.from('materials').update(materialData).eq('id', id).select().single();
+          if (error) throw error;
+          const index = materials.findIndex(m => m.id === id);
+          materials[index] = data;
+        } else {
+          const { data, error } = await db.from('materials').insert(materialData).select().single();
+          if (error) throw error;
+          materials.push(data);
+        }
+        closeModal();
+        renderMaterialsTable();
+        showToast(isEditing ? 'แก้ไขข้อมูลสำเร็จ' : 'เพิ่มวัสดุสำเร็จ');
+      } catch (error) {
+        console.error('Save material error:', error);
+        showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function deleteMaterial(id) {
+      showConfirm('ยืนยันการลบ', 'คุณแน่ใจหรือไม่ว่าต้องการลบวัสดุนี้? การกระทำนี้จะลบรายการรับ-จ่ายที่เกี่ยวข้องทั้งหมดด้วย', async () => {
+        showLoading(true);
+        try {
+          await db.from('transactions').delete().eq('material_id', id);
+          const { error } = await db.from('materials').delete().eq('id', id);
+          if (error) throw error;
+
+          materials = materials.filter(m => m.id !== id);
+          transactions = transactions.filter(t => t.material_id !== id);
+          renderMaterialsTable();
+          showToast('ลบวัสดุเรียบร้อย', 'danger');
+        } catch (error) {
+          console.error('Delete material error:', error);
+          showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+        } finally {
+          showLoading(false);
+        }
+      });
+    }
+
+    // =================================================================
+    //  TRANSACTIONS MANAGEMENT
+    // =================================================================
+    function renderTransactionsTable() {
+      const query = $('transactionSearch').value.toLowerCase();
+      const filtered = transactions.filter(t => {
+        const materialName = materials.find(m => m.id === t.material_id)?.name || '';
+        return !query || materialName.toLowerCase().includes(query);
+      });
+
+      const pageCount = Math.ceil(filtered.length / settings.items_per_page);
+      const start = (currentTransactionPage - 1) * settings.items_per_page;
+      const paginated = filtered.slice(start, start + settings.items_per_page);
+
+      $('transactionsTableBody').innerHTML = paginated.map(t => `
+        <tr>
+          <td>${thaiDate(t.transaction_date)}</td>
+          <td><span style="padding:4px 8px;border-radius:4px;color:#fff;background:${t.type === 'in' ? '#4caf50' : '#ff9800'}">${t.type === 'in' ? 'รับ' : 'จ่าย'}</span></td>
+          <td>${materials.find(m => m.id === t.material_id)?.name || 'N/A'}</td>
+          <td>${t.quantity}</td>
+          <td><button class="table-action-btn" onclick="window.deleteTransaction('${t.id}')"><i class="bi bi-trash"></i></button></td>
+        </tr>`).join('');
+      renderPagination('transactionsPagination', currentTransactionPage, pageCount, window.changeTransactionPage);
+    }
+
+    function openAddTransactionModal(type) {
+      showModal(`
+        <h3>เพิ่มรายการ${type === 'in' ? 'รับเข้า' : 'จ่ายออก'}</h3>
+        <form id="transactionForm">
+          <div class="form-group"><label>วัสดุ *</label><select class="form-control" id="txMaterial" required>${materials.map(m => `<option value="${m.id}">${m.name} (คงเหลือ ${m.current_stock})</option>`).join('')}</select></div>
+          <div class="form-group"><label>จำนวน *</label><input type="number" class="form-control" id="txQty" min="1" required></div>
+          <div class="form-group"><label>เลขที่อ้างอิง</label><input class="form-control" id="txRef"></div>
+          <div class="form-group"><label>หมายเหตุ</label><textarea class="form-control" id="txNote" rows="2"></textarea></div>
+          <div style="text-align:right; margin-top:20px;"><button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button><button type="submit" class="btn-main">บันทึก</button></div>
+        </form>`);
+      $('transactionForm').onsubmit = (e) => saveAddTransaction(e, type);
+    }
+
+    async function saveAddTransaction(e, type) {
+      e.preventDefault();
+      showLoading(true);
+      const materialId = $('txMaterial').value;
+      const qty = parseInt($('txQty').value);
+      const material = materials.find(m => m.id === materialId);
+
+      if (type === 'out' && qty > material.current_stock) {
+        showToast('จำนวนจ่ายออกเกินจำนวนสต็อกที่มี!', 'danger');
+        showLoading(false);
+        return;
+      }
+      
+      const newStock = material.current_stock + (type === 'in' ? qty : -qty);
+      const newTransaction = { 
+        material_id: materialId, 
+        type, 
+        quantity: qty, 
+        transaction_date: new Date().toISOString(),
+        reference_number: $('txRef')?.value || null,
+        note: $('txNote')?.value || null,
+        user_name: 'System' // Placeholder for user management
+      };
+
+      try {
+        const { data, error: txError } = await db.from('transactions').insert(newTransaction).select().single();
+        if (txError) throw txError;
+        
+        const { error: stockError } = await db.from('materials').update({ current_stock: newStock }).eq('id', materialId);
+        if (stockError) throw stockError;
+
+        transactions.unshift({...data, transaction_date: new Date(data.transaction_date)});
+        material.current_stock = newStock;
+        
+        closeModal();
+        renderTransactionsTable();
+        showToast('บันทึกรายการสำเร็จ');
+      } catch (error) {
+        console.error('Save transaction error:', error);
+        showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function deleteTransaction(id) {
+       showConfirm('ยืนยันการลบ', 'คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้? สต็อกของวัสดุจะถูกปรับคืน', async () => {
+        showLoading(true);
+        const tx = transactions.find(t => t.id === id);
+        if (!tx) {
+            showToast('ไม่พบรายการ', 'danger');
+            showLoading(false);
+            return;
+        }
+        
+        const material = materials.find(m => m.id === tx.material_id);
+        const stockRevert = tx.type === 'in' ? -tx.quantity : tx.quantity;
+        const newStock = material.current_stock + stockRevert;
+
+        try {
+            await db.from('transactions').delete().eq('id', tx.id);
+            await db.from('materials').update({ current_stock: newStock }).eq('id', material.id);
+
+            material.current_stock = newStock;
+            transactions = transactions.filter(t => t.id !== id);
+            
+            renderTransactionsTable();
+            showToast('ลบรายการสำเร็จ', 'danger');
+        } catch (error) {
+            console.error('Delete transaction error:', error);
+            showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+        } finally {
+            showLoading(false);
+        }
+      });
+    }
+
+    // =================================================================
+    //  BARCODE FUNCTIONALITY
+    // =================================================================
+    function focusBarcodeScan(page) {
+        const inputId = `${page}BarcodeScanInput`;
+        $(inputId).focus();
+        showToast('พร้อมสแกนบาร์โค้ด...');
+    }
+
+    function handleMaterialBarcode(barcode) {
+        $('materialSearch').value = barcode;
+        renderMaterialsTable();
+        const results = materials.filter(m => m.barcode === barcode);
+        if (results.length === 1) {
+            showToast(`พบ: ${results[0].name}`);
+        } else {
+            showToast('ไม่พบวัสดุสำหรับบาร์โค้ดนี้', 'danger');
+        }
+    }
+
+    function handleTransactionBarcode(barcode) {
+        const material = materials.find(m => m.barcode === barcode);
+        if (material) {
+            showToast(`เลือก: ${material.name}`);
+            openAddTransactionModalWithItem(material.id);
+        } else {
+            showToast('ไม่พบวัสดุสำหรับบาร์โค้ดนี้', 'danger');
+        }
+    }
+
+    function openAddTransactionModalWithItem(materialId) {
+        const material = materials.find(m => m.id === materialId);
+        showModal(`
+            <h3>ทำรายการด่วน: ${material.name}</h3>
+            <p>คงเหลือปัจจุบัน: ${material.current_stock} ${material.unit}</p>
+            <form id="barcodeTxForm">
+              <div class="form-group">
+                <label for="txQty">จำนวน *</label>
+                <input type="number" class="form-control" id="txQty" min="1" required value="1">
+              </div>
+              <div class="form-group">
+                <label>ประเภทรายการ *</label>
+                <div style="display:flex; gap: 10px;">
+                    <button type="button" class="btn-main" style="background:#4caf50; flex:1;" id="scanInBtn"><i class="bi bi-arrow-down-circle"></i> รับเข้า</button>
+                    <button type="button" class="btn-main" style="background:#ff9800; flex:1;" id="scanOutBtn"><i class="bi bi-arrow-up-circle"></i> จ่ายออก</button>
+                </div>
+              </div>
+              <div style="text-align:right; margin-top:20px;">
+                <button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button>
+              </div>
+            </form>
+        `);
+        $('txQty').focus();
+        $('scanInBtn').onclick = () => saveScannedTransaction(material.id, 'in');
+        $('scanOutBtn').onclick = () => saveScannedTransaction(material.id, 'out');
+    }
+
+    async function saveScannedTransaction(materialId, type) {
+        const qty = parseInt($('txQty').value);
+        if (!qty || qty < 1) {
+            showToast('กรุณาใส่จำนวนที่ถูกต้อง', 'danger');
+            return;
+        }
+        
+        const mockEvent = { preventDefault: () => {} };
+        const tempSelect = document.createElement('select');
+        tempSelect.id = 'txMaterial';
+        tempSelect.innerHTML = `<option value="${materialId}" selected></option>`;
+        const tempQty = document.createElement('input');
+        tempQty.id = 'txQty';
+        tempQty.value = qty;
+        
+        document.body.appendChild(tempSelect);
+        document.body.appendChild(tempQty);
+
+        await saveAddTransaction(mockEvent, type);
+        
+        tempSelect.remove();
+        tempQty.remove();
+    }
+
+    // =================================================================
+    //  BUDGET REQUEST
+    // =================================================================
+    function renderBudgetRequestPage() {
+        const page = $('page-budget-request');
+        const today = new Date().toISOString().split('T')[0];
+        page.innerHTML = `
+            <div class="page-title">ขออนุมัติใช้งบประมาณ</div>
+            <div class="section-card">
+                <form id="budgetRequestForm">
+                    <div style="display:flex; gap: 20px; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 1; min-width: 200px;">
+                            <label for="requester">ชื่อผู้ขอ *</label>
+                            <input type="text" id="requester" class="form-control" value="${settings.requester_name || ''}" required>
+                        </div>
+                        <div class="form-group" style="flex: 1; min-width: 200px;">
+                            <label for="request_date">วันที่ *</label>
+                            <input type="date" id="request_date" class="form-control" value="${today}" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="account_code">ใช้งบประมาณ (รหัสบัญชี) *</label>
+                        <select id="account_code" class="form-control" required>
+                            <option value="">-- เลือกรหัสบัญชี --</option>
+                            ${accountCodes.map(ac => `<option value="${ac.code}">${ac.code} - ${ac.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="amount">จำนวนเงินที่ขอ (บาท) *</label>
+                        <input type="number" id="amount" class="form-control" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>รายการวัสดุที่จะจัดหา</label>
+                        <table style="margin-bottom: 10px;">
+                            <thead><tr><th style="width: 5%;">#</th><th>รายการ</th><th style="width: 20%;">จำนวน</th><th style="width: 10%;"></th></tr></thead>
+                            <tbody id="budget_material_list">
+                                <tr>
+                                    <td>1</td>
+                                    <td><input type="text" class="form-control item-name" placeholder="ชื่อวัสดุ"></td>
+                                    <td><input type="text" class="form-control item-qty" placeholder="เช่น 2 ชิ้น"></td>
+                                    <td><button type="button" class="btn-danger" style="padding: 5px 10px;" onclick="window.removeBudgetItem(this)"><i class="bi bi-trash"></i></button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn-outline" id="addBudgetItemBtn"><i class="bi bi-plus"></i> เพิ่มรายการ</button>
+                    </div>
+                     <div class="form-group">
+                        <label for="budget_note">หมายเหตุเพิ่มเติม</label>
+                        <textarea id="budget_note" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div style="text-align: right; margin-top: 20px;">
+                        <button type="submit" class="btn-main"><i class="bi bi-send"></i> ส่งคำขออนุมัติ</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        $('addBudgetItemBtn').onclick = addBudgetItem;
+        $('budgetRequestForm').onsubmit = handleBudgetSubmit;
+    }
+
+    function addBudgetItem() {
+        const tableBody = $('budget_material_list');
+        const rowCount = tableBody.rows.length;
+        const newRow = tableBody.insertRow();
+        newRow.innerHTML = `
+            <td>${rowCount + 1}</td>
+            <td><input type="text" class="form-control item-name" placeholder="ชื่อวัสดุ"></td>
+            <td><input type="text" class="form-control item-qty" placeholder="เช่น 2 ชิ้น"></td>
+            <td><button type="button" class="btn-danger" style="padding: 5px 10px;" onclick="window.removeBudgetItem(this)"><i class="bi bi-trash"></i></button></td>
+        `;
+    }
+
+    function removeBudgetItem(button) {
+        const row = button.closest('tr');
+        row.remove();
+        // Re-number rows
+        $('budget_material_list').querySelectorAll('tr').forEach((r, index) => {
+            r.cells[0].textContent = index + 1;
+        });
+    }
+
+    async function handleBudgetSubmit(e) {
+        e.preventDefault();
+        const selectedAccountCode = $('account_code').value;
+        const account = accountCodes.find(ac => ac.code === selectedAccountCode);
+
+        const material_list = [];
+        $('budget_material_list').querySelectorAll('tr').forEach(row => {
+            const name = row.querySelector('.item-name').value;
+            const qty = row.querySelector('.item-qty').value;
+            if (name && qty) {
+                material_list.push({ item: name, quantity: qty });
+            }
+        });
+
+        const requestData = {
+            requester: $('requester').value,
+            request_date: $('request_date').value,
+            account_code: account.code,
+            account_name: account.name,
+            amount: parseFloat($('amount').value),
+            note: $('budget_note').value,
+            material_list: material_list,
+        };
+        
+        openEmailPreviewModal(requestData);
+    }
+
+    function openEmailPreviewModal(requestData) {
+        const itemsTable = requestData.material_list.length > 0 ? 
+            `<table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <thead style="background-color: #f2f2f2;">
+                    <tr>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">รายการ</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">จำนวน</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${requestData.material_list.map(item => `
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;">${item.item}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">${item.quantity}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>` : '<p>(ไม่มีรายการวัสดุที่ระบุ)</p>';
+
+        const emailBody = `
+            <p><strong>เรียน ผจศ. คุณ (ชื่อผู้อนุมัติ)</strong></p>
+            <p>ด้วย คุณ <strong>${requestData.requester}</strong> ได้ขอใช้งบประมาณ <strong>${requestData.account_name}</strong></p>
+            <p>เป็นจำนวนเงิน <strong>${requestData.amount.toLocaleString('th-TH')}</strong> บาท เพื่อจัดหารายการตามตารางดังต่อไปนี้:</p>
+            ${itemsTable}
+            <p>จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ</p>
+        `;
+
+        showModal(`
+            <h3>ตรวจสอบและส่งอีเมลขออนุมัติ</h3>
+            <div class="form-group">
+                <label for="approverName">ชื่อผู้อนุมัติ *</label>
+                <input type="text" id="approverName" class="form-control" value="${settings.approver_name || ''}" placeholder="เช่น สมชาย ใจดี" required>
+            </div>
+            <div class="form-group">
+                <label for="approverEmail">อีเมลผู้อนุมัติ (To) *</label>
+                <input type="email" id="approverEmail" class="form-control" value="${settings.approver_email || ''}" placeholder="approver@example.com" required>
+            </div>
+             <div class="form-group">
+                <label for="ccEmails">สำเนาถึง (CC)</label>
+                <input type="text" id="ccEmails" class="form-control" value="${settings.default_cc_emails || ''}" placeholder="cc1@example.com, cc2@example.com">
+            </div>
+            <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; max-height: 200px; overflow-y: auto;">
+                ${emailBody.replace('คุณ (ชื่อผู้อนุมัติ)', 'คุณ <span id="previewApproverName" style="font-weight:bold;">${settings.approver_name || ''}</span>')}
+            </div>
+            <div style="text-align:right; margin-top:20px;">
+                <button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button>
+                <button type="button" class="btn-main" id="sendEmailBtn">ยืนยันและส่งอีเมล</button>
+            </div>
+        `);
+
+        $('approverName').oninput = (e) => $('previewApproverName').textContent = e.target.value;
+        $('sendEmailBtn').onclick = () => {
+            const approverName = $('approverName').value;
+            const approverEmail = $('approverEmail').value;
+            const ccEmails = $('ccEmails').value.split(',').map(e => e.trim()).filter(e => e);
+            if (!approverName || !approverEmail) {
+                showToast('กรุณากรอกชื่อและอีเมลผู้อนุมัติ', 'danger');
+                return;
+            }
+            sendBudgetRequest(requestData, approverName, approverEmail, ccEmails);
+        };
+    }
+
+    async function sendBudgetRequest(requestData, approverName, approverEmail, ccEmails) {
+        showLoading(true, 'กำลังบันทึกและส่งคำขอ...');
+        try {
+            // 1. Save the request to the database
+            const { data: savedRequest, error: saveError } = await db.from('budget_requests')
+                .insert({
+                    ...requestData,
+                    status: 'PENDING'
+                })
+                .select()
+                .single();
+
+            if (saveError) throw saveError;
+
+            // 2. Invoke Edge Function to send email
+          const { data: functionData, error: functionError } = await db.functions.invoke('send-request-email', {
+  body: {
+    requestId: savedRequest.id,
+    requestData,
+    approverName,
+    approverEmail,
+    ccEmails
+  }
+});
+
+if (functionError) throw functionError;
+
+            if (functionError) throw functionError;
+            
+            closeModal();
+            showToast('ส่งคำขออนุมัติเรียบร้อยแล้ว');
+            // Optionally, clear the form
+            renderBudgetRequestPage();
+
+        } catch (error) {
+            console.error('Send budget request error:', error);
+            showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    /*
+    ====================================================================================================
+    !!! สำคัญ: โค้ดสำหรับ SUPABASE EDGE FUNCTION !!!
+    คุณต้องสร้าง Edge Function ชื่อ 'send-request-email' ในโปรเจกต์ Supabase ของคุณ
+    และนำโค้ดด้านล่างนี้ไปใส่ในไฟล์ `index.ts` ของ Function นั้น
+    
+    // supabase/functions/send-request-email/index.ts
+    import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+    import { corsHeaders } from '../_shared/cors.ts'
+
+    // คุณต้องตั้งค่า RESEND_API_KEY ใน Supabase Secrets
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+    const APP_URL = Deno.env.get('APP_URL') // URL ของแอปคุณ เช่น https://your-app.com
+
+    serve(async (req) => {
+      if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders })
+      }
+
+      try {
+        const { requestId, requestData, approverName, approverEmail, ccEmails } = await req.json()
+
+        const itemsTable = requestData.material_list.length > 0 ? 
+            `<table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-family: sans-serif;">
+                <thead style="background-color: #f2f2f2;">
+                    <tr>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">รายการ</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">จำนวน</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${requestData.material_list.map((item) => `
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;">${item.item}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">${item.quantity}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>` : '<p>(ไม่มีรายการวัสดุที่ระบุ)</p>';
+
+        const emailHtml = `
+            <div style="font-family: sans-serif; line-height: 1.6;">
+                <p><strong>เรียน ผจศ. คุณ ${approverName}</strong></p>
+                <p>ด้วย คุณ <strong>${requestData.requester}</strong> ได้ขอใช้งบประมาณ <strong>${requestData.account_name}</strong></p>
+                <p>เป็นจำนวนเงิน <strong>${requestData.amount.toLocaleString('th-TH')}</strong> บาท เพื่อจัดหารายการตามตารางดังต่อไปนี้:</p>
+                ${itemsTable}
+                <p>จึงเรียนมาเพื่อโปรดพิจารณาอนุมัติ</p>
+                <div style="margin-top: 25px; text-align: center;">
+                    <a href="${APP_URL}?request_id=${requestId}&decision=APPROVE" style="background-color: #28a745; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; margin-right: 10px;">อนุมัติ</a>
+                    <a href="${APP_URL}?request_id=${requestId}&decision=REJECT" style="background-color: #dc3545; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px;">ไม่อนุมัติ</a>
+                </div>
+            </div>
+        `;
+
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+          },
+          body: JSON.stringify({
+            from: 'Deluxe System <noreply@yourdomain.com>', // แก้เป็นโดเมนของคุณที่ยืนยันกับ Resend แล้ว
+            to: approverEmail,
+            cc: ccEmails,
+            subject: `ขออนุมัติใช้งบประมาณ: ${requestData.account_name}`,
+            html: emailHtml,
+          }),
+        })
+
+        const data = await res.json()
+        return new Response(JSON.stringify(data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        })
+      } catch (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        })
+      }
+    })
+    ====================================================================================================
+    */
+
+    // =================================================================
+    //  APPROVAL SYSTEM
+    // =================================================================
+    async function handleApprovalFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const requestId = params.get('request_id');
+        const decision = params.get('decision');
+
+        if (!requestId || !decision) return;
+
+        showLoading(true, 'กำลังดึงข้อมูลคำขอ...');
+        try {
+            const { data: request, error } = await db.from('budget_requests').select('*').eq('id', requestId).single();
+            if (error || !request) throw new Error('ไม่พบคำขอนี้ หรืออาจถูกจัดการไปแล้ว');
+
+            if (request.status !== 'PENDING') {
+                showToast(`คำขอนี้ถูก ${request.status === 'APPROVE' ? 'อนุมัติ' : 'ปฏิเสธ'} ไปแล้ว`, 'danger');
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return;
+            }
+            
+            const decisionText = decision === 'APPROVE' ? 'อนุมัติ' : 'ปฏิเสธ';
+            const buttonClass = decision === 'APPROVE' ? 'btn-main' : 'btn-danger';
+
+            showModal(`
+                <h3>ยืนยันการ${decisionText}</h3>
+                <p>คุณกำลังจะ${decisionText}คำขอใช้งบประมาณของ <strong>คุณ ${request.requester}</strong></p>
+                <p><strong>งบประมาณ:</strong> ${request.account_name}</p>
+                <p><strong>จำนวนเงิน:</strong> ${request.amount.toLocaleString('th-TH')} บาท</p>
+                <div class="form-group">
+                    <label for="approvalRemark">หมายเหตุ (ถ้ามี)</label>
+                    <textarea id="approvalRemark" class="form-control" rows="3"></textarea>
+                </div>
+                <div style="text-align:right; margin-top:20px;">
+                    <button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button>
+                    <button type="button" class="${buttonClass}" id="confirmApprovalBtn">ยืนยันการ${decisionText}</button>
+                </div>
+            `);
+
+            $('confirmApprovalBtn').onclick = () => submitApproval(requestId, decision, $('approvalRemark').value);
+
+        } catch(error) {
+            console.error('Approval handling error:', error);
+            showToast(error.message, 'danger');
+        } finally {
+            showLoading(false);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
+    async function submitApproval(requestId, decision, remark) {
+        showLoading(true, 'กำลังบันทึกผลการอนุมัติ...');
+        try {
+            const { error: updateError } = await db.from('budget_requests').update({ status: decision }).eq('id', requestId);
+            if (updateError) throw updateError;
+
+            const { error: insertError } = await db.from('approvals').insert({
+                request_id: requestId,
+                decision: decision,
+                remark: remark
+            });
+            if (insertError) throw insertError;
+            
+            closeModal();
+            showToast(`บันทึกการ${decision === 'APPROVE' ? 'อนุมัติ' : 'ปฏิเสธ'}เรียบร้อยแล้ว`);
+
+        } catch(error) {
+            console.error('Submit approval error:', error);
+            showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // =================================================================
+    //  REPORTS & SETTINGS
+    // =================================================================
+    function showReportTab(activeButton) {
+      document.querySelectorAll('#page-report .tab-btn').forEach(b => b.classList.remove('active'));
+      activeButton.classList.add('active');
+      const tab = activeButton.dataset.tab;
+      
+      let html = '';
+      const formatCurrency = val => (val || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      switch(tab) {
+        case 'stock':
+          const totalValue = materials.reduce((sum, m) => sum + (m.current_stock * m.price), 0);
+          html = `<h4>รายงานมูลค่าสต็อก</h4>
+                  <table><thead><tr><th>ชื่อวัสดุ</th><th>คงเหลือ</th><th>ราคาต่อหน่วย</th><th>มูลค่ารวม</th></tr></thead>
+                  <tbody>${materials.map(m => `<tr><td>${m.name}</td><td>${m.current_stock} ${m.unit}</td><td>${formatCurrency(m.price)}</td><td>${formatCurrency(m.current_stock * m.price)}</td></tr>`).join('')}</tbody>
+                  </table><div style="text-align:right;font-weight:bold;margin-top:15px;font-size:1.2rem;">มูลค่าสต็อกรวม: ${formatCurrency(totalValue)} บาท</div>`;
+          break;
+        case 'lowstock':
+          const lowStockList = materials.filter(m => m.current_stock <= m.min_stock);
+          html = lowStockList.length ? `<h4>รายงานวัสดุต่ำกว่าขั้นต่ำ</h4>
+                  <table><thead><tr><th>ชื่อวัสดุ</th><th>คงเหลือ</th><th>ขั้นต่ำ</th></tr></thead>
+                  <tbody>${lowStockList.map(m => `<tr><td>${m.name}</td><td style="color:#f44336; font-weight:bold;">${m.current_stock} ${m.unit}</td><td>${m.min_stock} ${m.unit}</td></tr>`).join('')}</tbody></table>`
+                  : `<div style="text-align:center;color:#4caf50;padding:40px;"><i class="bi bi-check-circle-fill" style="font-size:3rem;"></i><br><br>เยี่ยม! ไม่มีวัสดุที่ต่ำกว่าขั้นต่ำ</div>`;
+          break;
+        case 'expiry':
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const expiredList = materials.filter(m => m.category === 'ยา' && m.expiry_date && new Date(m.expiry_date) < today);
+          html = expiredList.length ? `<h4>รายงานยาหมดอายุ (ณ วันที่ ${thaiDate(today)})</h4>
+                  <table><thead><tr><th>ชื่อยา</th><th>วันหมดอายุ</th></tr></thead>
+                  <tbody>${expiredList.map(m => `<tr><td style="color:#f44336;">${m.name}</td><td style="color:#f44336; font-weight:bold;">${thaiDate(m.expiry_date)}</td></tr>`).join('')}</tbody></table>`
+                  : `<div style="text-align:center;color:#4caf50;padding:40px;"><i class="bi bi-check-circle-fill" style="font-size:3rem;"></i><br><br>ไม่พบยาที่หมดอายุในสต็อก</div>`;
+          break;
+      }
+      $('reportContent').innerHTML = html;
+    }
+
+    // =================================================================
+    //  SETTINGS PAGE
+    // =================================================================
+    function renderSettingsPage() {
+        const page = $('page-settings');
+        page.innerHTML = `
+            <div class="page-title">ตั้งค่าระบบ</div>
+            <div class="section-card">
+                <h4 style="margin-top:0">การตั้งค่าทั่วไป</h4>
+                <div class="form-group">
+                    <label for="settingsItemsPerPage">จำนวนรายการต่อหน้า</label>
+                    <select class="form-control" id="settingsItemsPerPage">
+                        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <div class="section-card">
+                <h4 style="margin-top:0">การตั้งค่าผู้ใช้งานและอีเมล</h4>
+                <div class="form-group">
+                    <label for="requester_name">ชื่อผู้ขอ (เริ่มต้น)</label>
+                    <input type="text" id="requester_name" class="form-control" value="${settings.requester_name || ''}">
+                </div>
+                <div class="form-group">
+                    <label for="approver_name">ชื่อผู้อนุมัติ (เริ่มต้น)</label>
+                    <input type="text" id="approver_name" class="form-control" value="${settings.approver_name || ''}">
+                </div>
+                <div class="form-group">
+                    <label for="approver_email">อีเมลผู้อนุมัติ (เริ่มต้น)</label>
+                    <input type="email" id="approver_email" class="form-control" value="${settings.approver_email || ''}">
+                </div>
+                <div class="form-group">
+                    <label for="default_cc_emails">อีเมล CC (เริ่มต้น)</label>
+                    <input type="text" id="default_cc_emails" class="form-control" value="${settings.default_cc_emails || ''}" placeholder="email1@example.com, email2@example.com">
+                </div>
+            </div>
+             <div class="section-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                    <h4 style="margin:0;">การจัดการรหัสบัญชี</h4>
+                    <button class="btn-main" id="addAccountCodeBtn"><i class="bi bi-plus"></i> เพิ่มรหัส</button>
+                </div>
+                <div style="overflow-x:auto">
+                    <table>
+                        <thead><tr><th>รหัส</th><th>ชื่อ</th><th>หมวดหมู่</th><th>จัดการ</th></tr></thead>
+                        <tbody id="accountCodesTableBody">
+                            ${accountCodes.map(ac => `
+                                <tr>
+                                    <td>${ac.code}</td>
+                                    <td>${ac.name}</td>
+                                    <td>${ac.category || ''}</td>
+                                    <td>
+                                        <button class="table-action-btn" title="แก้ไข" onclick="window.openAccountCodeModal('${ac.id}')"><i class="bi bi-pencil-square"></i></button>
+                                        <button class="table-action-btn" title="ลบ" onclick="window.deleteAccountCode('${ac.id}')"><i class="bi bi-trash"></i></button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div style="text-align:right; margin-top:20px;">
+                <button class="btn-main" id="saveSettingsBtn">บันทึกการตั้งค่าทั้งหมด</button>
+            </div>
+        `;
+        $('settingsItemsPerPage').value = settings.items_per_page || 10;
+        $('saveSettingsBtn').onclick = saveSettings;
+        $('addAccountCodeBtn').onclick = () => openAccountCodeModal();
+    }
+
+    async function saveSettings() {
+      showLoading(true);
+      const settingsToSave = [
+          { key: 'items_per_page', value: $('settingsItemsPerPage').value },
+          { key: 'requester_name', value: $('requester_name').value },
+          { key: 'approver_name', value: $('approver_name').value },
+          { key: 'approver_email', value: $('approver_email').value },
+          { key: 'default_cc_emails', value: $('default_cc_emails').value }
+      ];
+      try {
+        const { error } = await db.from('settings').upsert(settingsToSave);
+        if (error) throw error;
+        
+        // Update local state
+        settingsToSave.forEach(s => settings[s.key] = s.value);
+        settings.items_per_page = parseInt(settings.items_per_page);
+
+        showToast('บันทึกการตั้งค่าแล้ว');
+      } catch(error) {
+        console.error('Save settings error:', error);
+        showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function openAccountCodeModal(id = null) {
+        const isEditing = id !== null;
+        const ac = isEditing ? accountCodes.find(c => c.id === id) : {};
+        showModal(`
+            <h3>${isEditing ? 'แก้ไข' : 'เพิ่ม'}รหัสบัญชี</h3>
+            <form id="accountCodeForm">
+                <div class="form-group">
+                    <label for="ac_code">รหัส *</label>
+                    <input type="text" id="ac_code" class="form-control" value="${ac.code || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label for="ac_name">ชื่อรหัส *</label>
+                    <input type="text" id="ac_name" class="form-control" value="${ac.name || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label for="ac_category">หมวดหมู่</label>
+                    <input type="text" id="ac_category" class="form-control" value="${ac.category || ''}">
+                </div>
+                <div style="text-align:right; margin-top:20px;">
+                    <button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button>
+                    <button type="submit" class="btn-main">บันทึก</button>
+                </div>
+            </form>
+        `);
+        $('accountCodeForm').onsubmit = (e) => saveAccountCode(e, id);
+    }
+
+    async function saveAccountCode(e, id = null) {
+        e.preventDefault();
+        showLoading(true);
+        const isEditing = id !== null;
+        const codeData = {
+            code: $('ac_code').value,
+            name: $('ac_name').value,
+            category: $('ac_category').value,
+        };
+
+        try {
+            if (isEditing) {
+                const { data, error } = await db.from('account_codes').update(codeData).eq('id', id).select().single();
+                if (error) throw error;
+                const index = accountCodes.findIndex(ac => ac.id === id);
+                accountCodes[index] = data;
+            } else {
+                const { data, error } = await db.from('account_codes').insert(codeData).select().single();
+                if (error) throw error;
+                accountCodes.push(data);
+            }
+            closeModal();
+            renderSettingsPage(); // Re-render the whole page to update the table
+            showToast('บันทึกรหัสบัญชีสำเร็จ');
+        } catch (error) {
+            console.error('Save account code error:', error);
+            showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function deleteAccountCode(id) {
+        showConfirm('ยืนยันการลบ', 'คุณแน่ใจหรือไม่ว่าต้องการลบรหัสบัญชีนี้?', async () => {
+            showLoading(true);
+            try {
+                const { error } = await db.from('account_codes').delete().eq('id', id);
+                if (error) throw error;
+                accountCodes = accountCodes.filter(ac => ac.id !== id);
+                renderSettingsPage();
+                showToast('ลบรหัสบัญชีแล้ว', 'danger');
+            } catch (error) {
+                console.error('Delete account code error:', error);
+                showToast(`เกิดข้อผิดพลาด: ${error.message}`, 'danger');
+            } finally {
+                showLoading(false);
+            }
+        });
+    }
+
+
+    // =================================================================
+    //  PAGINATION
+    // =================================================================
+    function renderPagination(containerId, current, total, callback) {
+        const container = $(containerId);
+        container.innerHTML = ''; // Clear previous buttons
+        if (total <= 1) {
+            return;
+        }
+
+        const createButton = (text, page, isActive = false) => {
+            const button = document.createElement('button');
+            button.innerHTML = text;
+            if (isActive) {
+                button.classList.add('active');
+            }
+            button.onclick = () => callback(page);
+            return button;
+        };
+
+        if (current > 1) {
+            container.appendChild(createButton('&laquo;', current - 1));
+        }
+        for (let i = 1; i <= total; i++) {
+            container.appendChild(createButton(i, i, i === current));
+        }
+        if (current < total) {
+            container.appendChild(createButton('&raquo;', current + 1));
+        }
+    }
+
+    // =================================================================
+    //  INITIALIZATION
+    // =================================================================
+    async function initializeApp() {
+      await loadData();
+      // Make functions globally accessible for inline onclick handlers
+      window.showPage = showPage;
+      window.openEditMaterialModal = openEditMaterialModal;
+      window.deleteMaterial = deleteMaterial;
+      window.deleteTransaction = deleteTransaction;
+      window.focusBarcodeScan = focusBarcodeScan;
+      window.addBudgetItem = addBudgetItem;
+      window.removeBudgetItem = removeBudgetItem;
+      window.openAccountCodeModal = openAccountCodeModal;
+      window.deleteAccountCode = deleteAccountCode;
+      window.changeMaterialPage = (newPage) => {
+        currentPage = newPage;
+        renderMaterialsTable();
+      };
+      window.changeTransactionPage = (newPage) => {
+          currentTransactionPage = newPage;
+          renderTransactionsTable();
+      };
+
+      showPage('dashboard');
+      handleApprovalFromURL();
+
+      const handleScan = (event, handler) => {
+        if (event.key === 'Enter') {
+          const barcode = event.target.value.trim();
+          if (barcode) handler(barcode);
+          event.target.value = '';
+        }
+      };
+
+      $('materialBarcodeScanInput').addEventListener('keyup', e => handleScan(e, handleMaterialBarcode));
+      $('transactionBarcodeScanInput').addEventListener('keyup', e => handleScan(e, handleTransactionBarcode));
+    }
+
+    initializeApp();
+  </script>
+</body>
+</html>
