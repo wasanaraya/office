@@ -843,20 +843,16 @@
                 <input type="text" id="approverName" class="form-control" value="${settings.approver_name || ''}" placeholder="เช่น สมชาย ใจดี" required>
             </div>
             <div class="form-group">
-                <label for="approverEmail">อีเมลผู้อนุมัติ (To) *</label>
-                <input type="email" id="approverEmail" class="form-control" value="${settings.approver_email || ''}" placeholder="approver@example.com" required>
-            </div>
-             <div class="form-group">
-                <label for="ccEmails">สำเนาถึง (CC)</label>
-                <input type="text" id="ccEmails" class="form-control" value="${settings.default_cc_emails || ''}" placeholder="cc1@example.com, cc2@example.com">
-            </div>
-            <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; max-height: 200px; overflow-y: auto;">
-                ${emailBody.replace('คุณ (ชื่อผู้อนุมัติ)', 'คุณ <span id="previewApproverName" style="font-weight:bold;">${settings.approver_name || ''}</span>')}
-            </div>
-            <div style="text-align:right; margin-top:20px;">
-                <button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button>
-                <button type="button" class="btn-main" id="sendEmailBtn">ยืนยันและส่งอีเมล</button>
-            </div>
+        <label for="ccEmails">สำเนาถึง (CC)</label>
+        <input type="text" id="ccEmails" class="form-control" value="${settings.default_cc_emails || ''}" placeholder="cc1@example.com, cc2@example.com">
+    </div>
+    <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #f9f9f9; max-height: 200px; overflow-y: auto;">
+        ${emailBody.replace('คุณ (ชื่อผู้อนุมัติ)', `คุณ <span id="previewApproverName" style="font-weight:bold;">${settings.approver_name || ''}</span>`)}
+    </div>
+    <div style="text-align:right; margin-top:20px;">
+        <button type="button" class="btn-outline" onclick="closeModal()">ยกเลิก</button>
+        <button type="button" class="btn-main" id="sendEmailBtn">ยืนยันและส่งอีเมล</button>
+    </div>
         `);
 
         $('approverName').oninput = (e) => $('previewApproverName').textContent = e.target.value;
