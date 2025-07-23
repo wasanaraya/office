@@ -887,10 +887,6 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             // 2. Invoke Edge Function to send email
         await sendEmailJS(requestData, approverName, approverEmail, ccEmails);
  
-if (functionError) throw functionError;
-
-            if (functionError) throw functionError;
-            
             closeModal();
             showToast('ส่งคำขออนุมัติเรียบร้อยแล้ว');
             // Optionally, clear the form
