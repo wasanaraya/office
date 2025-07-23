@@ -1357,45 +1357,55 @@ async function sendEmailJS(requestData, approverName, approverEmail, ccEmails) {
     }
 
     // =================================================================
-    //  INITIALIZATION
-    // =================================================================
-    async function initializeApp() {
-      await loadData();
-      // Make functions globally accessible for inline onclick handlers
-      window.showPage = showPage;
-      window.openEditMaterialModal = openEditMaterialModal;
-      window.deleteMaterial = deleteMaterial;
-      window.deleteTransaction = deleteTransaction;
-      window.focusBarcodeScan = focusBarcodeScan;
-      window.addBudgetItem = addBudgetItem;
-      window.removeBudgetItem = removeBudgetItem;
-      window.openAccountCodeModal = openAccountCodeModal;
-      window.deleteAccountCode = deleteAccountCode;
-      window.changeMaterialPage = (newPage) => {
-        currentPage = newPage;
-        renderMaterialsTable();
-      };
-      window.changeTransactionPage = (newPage) => {
-          currentTransactionPage = newPage;
-          renderTransactionsTable();
-      };
+//  INITIALIZATION
+// =================================================================
+async function initializeApp() {
+  /* ---------- 1.  EmailJS one-time init ---------- */
+  emailjs.init('YOUR_PUBLIC_KEY'); // ← replace with your real EmailJS public key
 
-      showPage('dashboard');
-      handleApprovalFromURL();
+  /* ---------- 2.  Load data & expose helpers ---------- */
+  await loadData();
 
-      const handleScan = (event, handler) => {
-        if (event.key === 'Enter') {
-          const barcode = event.target.value.trim();
-          if (barcode) handler(barcode);
-          event.target.value = '';
-        }
-      };
+  // Global helpers for inline onclick handlers
+  window.showPage            = showPage;
+  window.openEditMaterialModal = openEditMaterialModal;
+  window.deleteMaterial      = deleteMaterial;
+  window.deleteTransaction   = deleteTransaction;
+  window.focusBarcodeScan    = focusBarcodeScan;
+  window.addBudgetItem       = addBudgetItem;
+  window.removeBudgetItem    = removeBudgetItem;
+  window.openAccountCodeModal = openAccountCodeModal;
+  window.deleteAccountCode   = deleteAccountCode;
+  window.changeMaterialPage  = (newPage) => {
+    currentPage = newPage;
+    renderMaterialsTable();
+  };
+  window.changeTransactionPage = (newPage) => {
+    currentTransactionPage = newPage;
+    renderTransactionsTable();
+  };
 
-      $('materialBarcodeScanInput').addEventListener('keyup', e => handleScan(e, handleMaterialBarcode));
-      $('transactionBarcodeScanInput').addEventListener('keyup', e => handleScan(e, handleTransactionBarcode));
+  /* ---------- 3.  UI & barcode listeners ---------- */
+  showPage('dashboard');
+  handleApprovalFromURL();
+
+  const handleScan = (event, handler) => {
+    if (event.key === 'Enter') {
+      const barcode = event.target.value.trim();
+      if (barcode) handler(barcode);
+      event.target.value = '';
     }
+  };
 
-    initializeApp();
+  $('materialBarcodeScanInput').addEventListener('keyup', e =>
+    handleScan(e, handleMaterialBarcode)
+  );
+  $('transactionBarcodeScanInput').addEventListener('keyup', e =>
+    handleScan(e, handleTransactionBarcode)
+  );
+}
+
+initializeApp();
   </script>
 </body>
 </html>
