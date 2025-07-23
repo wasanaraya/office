@@ -54,6 +54,8 @@
     .table-action-btn:hover { color: #2196f3; }
     @media(max-width:768px){ .sidebar{display:none;} .content-area{padding:20px;} .section-card{padding:20px;} }
   </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
 </head>
 <body>
   <div id="loading" class="loading-overlay">
@@ -883,7 +885,7 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             if (saveError) throw saveError;
 
             // 2. Invoke Edge Function to send email
-          const { data: functionData, error: functionError } = await db.functions.invoke('send-request-email', {
+        await sendEmailJS(requestData, approverName, approverEmail, ccEmails);
   body: {
     requestId: savedRequest.id,
     requestData,
@@ -1278,7 +1280,51 @@ if (functionError) throw functionError;
         });
     }
 
+/* ------------------------------------------------------------------ */
+/*  EmailJS client-side email sender                                  */
+/*  Replace the three placeholders with your own IDs from EmailJS     */
+/* ------------------------------------------------------------------ */
+const EMAILJS_SERVICE_ID  = 'service_f2t090t';   // ← Dashboard → Email Services
+const EMAILJS_TEMPLATE_ID = 'template_7xibgbq';  // ← Dashboard → Email Templates
+const EMAILJS_PUBLIC_KEY  = 'MK2OUomFmzWPrHpMW';   // ← Dashboard → Account → General
 
+async function sendEmailJS(requestData, approverName, approverEmail, ccEmails) {
+  showLoading(true, 'กำลังส่งอีเมลผ่าน EmailJS…');
+
+  /* Build the HTML table for the material list */
+  const itemsTable = requestData.material_list.length
+    ? `<table border="1" cellpadding="6" style="border-collapse:collapse;font-family:sans-serif;font-size:14px;">
+         <thead><tr><th>รายการ</th><th>จำนวน</th></tr></thead>
+         <tbody>
+           ${requestData.material_list
+             .map(i => `<tr><td>${i.item}</td><td>${i.quantity}</td></tr>`)
+             .join('')}
+         </tbody>
+       </table>`
+    : '<p>(ไม่มีรายการวัสดุที่ระบุ)</p>';
+
+  /* Parameters that will be injected into your EmailJS template */
+  const templateParams = {
+    requester:       requestData.requester,
+    approver_name:   approverName,
+    approver_email:  approverEmail,
+    cc_emails:       ccEmails.join(','),
+    account_name:    requestData.account_name,
+    amount:          requestData.amount.toLocaleString('th-TH'),
+    items_table:     itemsTable,
+    note:            requestData.note || '-'
+  };
+
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
+    showToast('ส่งอีเมลสำเร็จ');
+  } catch (err) {
+    console.error('EmailJS error:', err);
+    showToast(`ส่งอีเมลไม่สำเร็จ: ${err.text || err.message}`, 'danger');
+  } finally {
+    showLoading(false);
+  }
+}
     // =================================================================
     //  PAGINATION
     // =================================================================
