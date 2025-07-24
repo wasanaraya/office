@@ -253,10 +253,10 @@
       setTimeout(() => t.remove(), 3500);
     };
 
-    const showModal = (html) => {
+    const showModal = (html, maxWidth = '600px') => {
       const m = document.createElement('div');
       m.className = 'modal-custom';
-      m.innerHTML = `<div class="modal-dialog">${html}</div>`;
+      m.innerHTML = `<div class="modal-dialog" style="max-width: ${maxWidth};">${html}</div>`;
       m.onclick = e => { if (e.target === m) closeModal(); };
       $('modalContainer').appendChild(m);
       setTimeout(() => m.classList.add('show'), 10);
@@ -1162,24 +1162,44 @@ async function sendEmailJS(requestData, approverName, approverEmail, ccEmails, r
             return;
         }
 
-        const itemsTable = request.material_list.length > 0 
-            ? `<h4>รายการวัสดุ</h4>
-               <table style="margin-top:5px; width:100%; border-collapse: collapse;">
-                 <thead>
-                   <tr>
-                     <th style="border: 1px solid #ddd; padding: 8px; background-color: #f9f9f9;">รายการ</th>
-                     <th style="border: 1px solid #ddd; padding: 8px; background-color: #f9f9f9;">จำนวน</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   ${request.material_list.map(i => `
-                     <tr>
-                       <td style="border: 1px solid #ddd; padding: 8px;">${i.item}</td>
-                       <td style="border: 1px solid #ddd; padding: 8px;">${i.quantity}</td>
-                     </tr>`).join('')}
-                 </tbody>
-               </table>` 
-            : '<p><em>ไม่มีรายการวัสดุที่ระบุ</em></p>';
+        const itemsTable = (() => {
+            if (!request.material_list || request.material_list.length === 0) {
+                return '<p><em>ไม่มีรายการวัสดุที่ระบุ</em></p>';
+            }
+
+            const chunkSize = 10;
+            const chunks = [];
+            for (let i = 0; i < request.material_list.length; i += chunkSize) {
+                chunks.push(request.material_list.slice(i, i + chunkSize));
+            }
+
+            const tablesHtml = chunks.map(chunk => {
+                return `
+                    <table style="flex: 1; min-width: 200px; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="border: 1px solid #ddd; padding: 8px; background-color: #f9f9f9; white-space: nowrap;">รายการ</th>
+                                <th style="border: 1px solid #ddd; padding: 8px; background-color: #f9f9f9; white-space: nowrap;">จำนวน</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${chunk.map(i => `
+                                <tr>
+                                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;">${i.item}</td>
+                                    <td style="border: 1px solid #ddd; padding: 8px; white-space: nowrap;">${i.quantity}</td>
+                                </tr>`).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }).join('');
+
+            return `
+                <h4>รายการวัสดุ</h4>
+                <div style="display: flex; gap: 20px; align-items: flex-start; width: 100%; margin-top: 5px; overflow-x: auto; padding-bottom: 10px;">
+                    ${tablesHtml}
+                </div>
+            `;
+        })();
 
         showModal(`
             <h3>รายละเอียดคำขอใช้งบประมาณ</h3>
@@ -1222,7 +1242,7 @@ async function sendEmailJS(requestData, approverName, approverEmail, ccEmails, r
              <div style="text-align:right; margin-top:20px;">
                 <button type="button" class="btn btn-primary" onclick="window.closeModal()">ปิด</button>
             </div>
-        `);
+        `, '800px');
     }
     
     async function cancelBudgetRequest(id) {
