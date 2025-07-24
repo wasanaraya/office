@@ -888,23 +888,23 @@
     }
 
     function openEmailPreviewModal(requestData) {
-        const itemsTable = requestData.material_list.length > 0 ? 
-            `<table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                <thead style="background-color: #f2f2f2;">
-                    <tr>
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">รายการ</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">จำนวน</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${requestData.material_list.map(item => `
-                        <tr>
-                            <td style="padding: 8px; border: 1px solid #ddd;">${item.item}</td>
-                            <td style="padding: 8px; border: 1px solid #ddd;">${item.quantity}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>` : '<p>(ไม่มีรายการวัสดุที่ระบุ)</p>';
+        const itemsTable = requestData.material_list.length > 0 
+            ? `<table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-family: sans-serif; font-size: 14px;">
+                 <thead style="background-color: #f8f9fa;">
+                   <tr>
+                     <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">รายการ</th>
+                     <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">จำนวน</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   ${requestData.material_list.map((i, index) => `
+                     <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
+                       <td style="border: 1px solid #dee2e6; padding: 12px;">${i.item}</td>
+                       <td style="border: 1px solid #dee2e6; padding: 12px;">${i.quantity}</td>
+                     </tr>`).join('')}
+                 </tbody>
+               </table>` 
+            : '<p>(ไม่มีรายการวัสดุที่ระบุ)</p>';
 
         const emailBody = `
             <p><strong>เรียน ผจศ. คุณ (ชื่อผู้อนุมัติ)</strong></p>
@@ -995,15 +995,22 @@ async function sendEmailJS(requestData, approverName, approverEmail, ccEmails, r
     const approveUrl = `${appBaseUrl}?request_id=${requestId}&decision=APPROVE`;
     const rejectUrl = `${appBaseUrl}?request_id=${requestId}&decision=REJECT`;
 
-    const itemsTable = requestData.material_list.length
-        ? `<table border="1" cellpadding="6" style="border-collapse:collapse;font-family:sans-serif;font-size:14px;">
-             <thead><tr><th>รายการ</th><th>จำนวน</th></tr></thead>
+    const itemsTable = requestData.material_list.length > 0 
+        ? `<table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-family: sans-serif; font-size: 14px;">
+             <thead style="background-color: #f8f9fa;">
+               <tr>
+                 <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">รายการ</th>
+                 <th style="border: 1px solid #dee2e6; padding: 12px; text-align: left; font-weight: 600; color: #495057;">จำนวน</th>
+               </tr>
+             </thead>
              <tbody>
-               ${requestData.material_list
-                 .map(i => `<tr><td>${i.item}</td><td>${i.quantity}</td></tr>`)
-                 .join('')}
+               ${requestData.material_list.map((i, index) => `
+                 <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
+                   <td style="border: 1px solid #dee2e6; padding: 12px;">${i.item}</td>
+                   <td style="border: 1px solid #dee2e6; padding: 12px;">${i.quantity}</td>
+                 </tr>`).join('')}
              </tbody>
-           </table>`
+           </table>` 
         : '<p>(ไม่มีรายการวัสดุที่ระบุ)</p>';
 
     // These parameters will be injected into your EmailJS template.
@@ -1061,6 +1068,10 @@ async function sendEmailJS(requestData, approverName, approverEmail, ccEmails, r
                 <p>คุณกำลังจะ${decisionText}คำขอใช้งบประมาณของ <strong>คุณ ${request.requester}</strong></p>
                 <p><strong>จำนวนเงิน:</strong> ${request.amount.toLocaleString('th-TH')} บาท</p>
                 <div class="form-group">
+                    <label for="approverNameInput">ชื่อผู้อนุมัติ *</label>
+                    <input type="text" id="approverNameInput" class="form-control" required>
+                </div>
+                <div class="form-group">
                     <label for="approvalRemark">หมายเหตุ (ถ้ามี)</label>
                     <textarea id="approvalRemark" class="form-control" rows="3"></textarea>
                 </div>
@@ -1076,17 +1087,19 @@ async function sendEmailJS(requestData, approverName, approverEmail, ccEmails, r
 
             // Add listener for the confirmation input
             const confirmInput = $('decisionConfirmInput');
+            const approverNameInput = $('approverNameInput');
             const confirmBtn = $('confirmApprovalBtn');
 
-            confirmInput.addEventListener('input', () => {
-                if (confirmInput.value.trim() === decisionText) {
-                    confirmBtn.disabled = false;
-                } else {
-                    confirmBtn.disabled = true;
-                }
-            });
+            const validateForm = () => {
+                const isTextMatch = confirmInput.value.trim() === decisionText;
+                const isNameFilled = approverNameInput.value.trim() !== '';
+                confirmBtn.disabled = !(isTextMatch && isNameFilled);
+            };
 
-            confirmBtn.onclick = () => submitApproval(requestId, decision, $('approvalRemark').value);
+            confirmInput.addEventListener('input', validateForm);
+            approverNameInput.addEventListener('input', validateForm);
+
+            confirmBtn.onclick = () => submitApproval(requestId, decision, $('approvalRemark').value, approverNameInput.value);
 
         } catch(error) {
             console.error('Approval handling error:', error);
@@ -1098,7 +1111,7 @@ async function sendEmailJS(requestData, approverName, approverEmail, ccEmails, r
         }
     }
 
-    async function submitApproval(requestId, decision, remark) {
+    async function submitApproval(requestId, decision, remark, approverName) {
         showLoading(true, 'กำลังบันทึกผลการอนุมัติ...');
         try {
             const { data: updatedRequest, error: updateError } = await db.from('budget_requests').update({ status: decision }).eq('id', requestId).select().single();
@@ -1107,7 +1120,8 @@ async function sendEmailJS(requestData, approverName, approverEmail, ccEmails, r
             const { data: newApproval, error: insertError } = await db.from('approvals').insert({
                 request_id: requestId,
                 decision: decision,
-                remark: remark
+                remark: remark,
+                approver_name: approverName
             }).select().single();
             if (insertError) throw insertError;
             
@@ -1181,6 +1195,16 @@ async function sendEmailJS(requestData, approverName, approverEmail, ccEmails, r
                 <label>สถานะ</label>
                 <div style="padding-top:5px;">${renderStatusBadge(request.status)}</div>
             </div>
+            ${approval ? `
+            <div class="form-group">
+                <label>ผู้อนุมัติ</label>
+                <div class="form-control" style="background:#f7fafd;">${approval.approver_name || 'N/A'}</div>
+            </div>
+            <div class="form-group">
+                <label>วันที่อนุมัติ</label>
+                <div class="form-control" style="background:#f7fafd;">${thaiDate(approval.created_at)}</div>
+            </div>
+            ` : ''}
             <hr style="margin: 20px 0; border: none; border-top: 1px solid hsl(var(--border));">
             ${itemsTable}
             <div class="form-group" style="margin-top:20px;">
